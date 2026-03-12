@@ -1,0 +1,2017 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>EngLearn Hub — Hacettepe</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700;900&family=DM+Mono:wght@300;400;500&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#0d0d0f;--surface:#141416;--surface2:#1c1c20;--border:#2a2a30;--accent:#c8a96e;--accent2:#7eb8c9;--accent3:#9b7ec8;--text:#e8e6df;--muted:#6b6b75;--success:#6ec89b;--danger:#c86e7e;}
+*{margin:0;padding:0;box-sizing:border-box;}
+body{background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;min-height:100vh;overflow-x:hidden;}
+body::before{content:'';position:fixed;inset:0;background:radial-gradient(ellipse 60% 40% at 20% 20%,rgba(200,169,110,0.06) 0%,transparent 60%),radial-gradient(ellipse 50% 50% at 80% 80%,rgba(126,184,201,0.05) 0%,transparent 60%);pointer-events:none;z-index:0;}
+.container{max-width:1280px;margin:0 auto;padding:0 24px;position:relative;z-index:1;}
+
+/* HEADER */
+header{padding:32px 0 24px;border-bottom:1px solid var(--border);margin-bottom:28px;}
+.header-inner{display:flex;align-items:flex-end;justify-content:space-between;flex-wrap:wrap;gap:12px;}
+.logo{font-family:'Playfair Display',serif;font-size:1.8rem;font-weight:900;letter-spacing:-0.02em;line-height:1;}
+.logo span{color:var(--accent);}
+.subtitle{font-family:'DM Mono',monospace;font-size:0.67rem;color:var(--muted);letter-spacing:0.15em;text-transform:uppercase;margin-top:4px;}
+.date-display{font-family:'DM Mono',monospace;font-size:0.73rem;color:var(--muted);text-align:right;}
+.date-display .day{font-size:1.6rem;color:var(--accent);font-weight:500;display:block;line-height:1;}
+
+/* STREAK BAR — top of dashboard */
+.streak-bar{display:flex;align-items:center;gap:10px;padding:13px 18px;background:linear-gradient(135deg,rgba(200,169,110,0.1),rgba(200,169,110,0.03));border:1px solid rgba(200,169,110,0.22);border-radius:12px;margin-bottom:20px;}
+.streak-fire{font-size:1.8rem;}
+.streak-num{font-family:'Playfair Display',serif;font-size:1.9rem;font-weight:900;color:var(--accent);line-height:1;}
+.streak-lbl{font-family:'DM Mono',monospace;font-size:0.65rem;color:var(--muted);text-transform:uppercase;letter-spacing:0.08em;}
+.streak-msg{margin-left:auto;font-size:0.75rem;color:var(--muted);text-align:right;}
+.streak-warn{color:var(--danger);font-weight:600;}
+
+/* TABS */
+.tabs{display:flex;gap:3px;margin-bottom:26px;background:var(--surface);padding:4px;border-radius:10px;border:1px solid var(--border);overflow-x:auto;}
+.tab-btn{flex:1;min-width:max-content;padding:8px 14px;background:transparent;border:none;color:var(--muted);font-family:'DM Sans',sans-serif;font-size:0.78rem;font-weight:500;cursor:pointer;border-radius:7px;transition:all 0.2s;white-space:nowrap;}
+.tab-btn.active{background:var(--surface2);color:var(--accent);border:1px solid var(--border);}
+.tab-btn:hover:not(.active){color:var(--text);}
+.tab-btn .badge-dot{display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--danger);margin-left:4px;vertical-align:middle;}
+
+/* PANELS */
+.panel{display:none;}.panel.active{display:block;animation:fadeIn 0.22s ease;}
+
+/* CARDS */
+.card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:20px;margin-bottom:16px;}
+.section-title{font-family:'Playfair Display',serif;font-size:1.1rem;font-weight:700;margin-bottom:12px;display:flex;align-items:center;gap:8px;}
+.section-title .dot{width:7px;height:7px;border-radius:50%;background:var(--accent);flex-shrink:0;}
+
+/* STATS */
+.stats-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-bottom:20px;}
+.stat-card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:16px;position:relative;overflow:hidden;transition:border-color 0.2s;}
+.stat-card:hover{border-color:var(--accent);}
+.stat-card::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:var(--color,var(--accent));opacity:0.7;}
+.stat-label{font-size:0.64rem;color:var(--muted);text-transform:uppercase;letter-spacing:0.12em;font-family:'DM Mono',monospace;margin-bottom:5px;}
+.stat-value{font-family:'Playfair Display',serif;font-size:1.9rem;font-weight:700;color:var(--color,var(--accent));line-height:1;}
+.stat-sub{font-size:0.68rem;color:var(--muted);margin-top:3px;}
+
+/* FORMS */
+.form-row{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px;}
+.form-row.single{grid-template-columns:1fr;}
+.form-row.triple{grid-template-columns:1fr 1fr 1fr;}
+label{display:block;font-size:0.69rem;color:var(--muted);text-transform:uppercase;letter-spacing:0.1em;font-family:'DM Mono',monospace;margin-bottom:4px;}
+input,select,textarea{width:100%;background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:8px 12px;color:var(--text);font-family:'DM Sans',sans-serif;font-size:0.85rem;outline:none;transition:border-color 0.2s;}
+input:focus,select:focus,textarea:focus{border-color:var(--accent);}
+textarea{resize:vertical;min-height:72px;}
+select option{background:var(--surface2);}
+
+/* BUTTONS */
+.btn{padding:8px 16px;border-radius:8px;border:none;font-family:'DM Sans',sans-serif;font-size:0.82rem;font-weight:500;cursor:pointer;transition:all 0.2s;}
+.btn-primary{background:var(--accent);color:#0d0d0f;}.btn-primary:hover{opacity:0.85;transform:translateY(-1px);}
+.btn-ghost{background:transparent;border:1px solid var(--border);color:var(--muted);}.btn-ghost:hover{border-color:var(--accent);color:var(--accent);}
+.btn-sm{padding:5px 10px;font-size:0.73rem;}
+.btn-danger{background:transparent;border:1px solid var(--danger);color:var(--danger);padding:4px 8px;font-size:0.72rem;}.btn-danger:hover{background:var(--danger);color:white;}
+
+/* PROGRESS */
+.progress-section{margin-bottom:16px;}
+.progress-label{display:flex;justify-content:space-between;margin-bottom:4px;font-size:0.78rem;}
+.progress-bar{height:5px;background:var(--border);border-radius:99px;overflow:hidden;}
+.progress-fill{height:100%;border-radius:99px;transition:width 0.7s ease;}
+
+/* WORD TABLE */
+.wl-cat-tabs{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:16px;}
+.wl-cat-btn{padding:6px 13px;border-radius:20px;border:1px solid var(--border);background:transparent;color:var(--muted);font-family:'DM Mono',monospace;font-size:0.7rem;cursor:pointer;transition:all 0.2s;white-space:nowrap;}
+.wl-cat-btn.active{background:var(--accent);color:#0d0d0f;border-color:var(--accent);font-weight:600;}
+.wl-cat-btn:hover:not(.active){border-color:var(--accent);color:var(--accent);}
+.wl-prog-bar{height:4px;background:var(--border);border-radius:99px;margin-bottom:16px;overflow:hidden;}
+.wl-prog-fill{height:100%;border-radius:99px;background:linear-gradient(90deg,var(--accent),var(--accent2));transition:width 0.5s ease;}
+.word-table{width:100%;border-collapse:collapse;}
+.word-table th{font-family:'DM Mono',monospace;font-size:0.62rem;text-transform:uppercase;letter-spacing:0.1em;color:var(--muted);padding:7px 11px;text-align:left;border-bottom:1px solid var(--border);}
+.word-table td{padding:9px 11px;border-bottom:1px solid rgba(42,42,48,0.5);vertical-align:middle;}
+.word-table tr:hover td{background:rgba(255,255,255,0.018);}
+.word-table tr.s-known td{background:rgba(110,200,155,0.05);}
+.word-table tr.s-unknown td{background:rgba(200,110,126,0.05);}
+.word-table tr.s-unsure td{background:rgba(200,169,110,0.05);}
+.wt-num{font-family:'DM Mono',monospace;font-size:0.68rem;color:var(--muted);width:30px;}
+.wt-word-cell{font-family:'Playfair Display',serif;font-size:0.95rem;font-weight:700;cursor:pointer;transition:color 0.15s;}
+.wt-word-cell:hover{color:var(--accent2)!important;}
+.wt-phonetic{font-family:'DM Mono',monospace;font-size:0.65rem;color:var(--accent3);margin-top:2px;}
+.wt-example{font-size:0.7rem;color:var(--muted);font-style:italic;margin-top:2px;}
+.status-btns{display:flex;gap:4px;align-items:center;}
+.status-btn{width:28px;height:28px;border-radius:7px;border:1.5px solid var(--border);background:transparent;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:0.85rem;transition:all 0.15s;flex-shrink:0;color:var(--muted);}
+.status-btn:hover{transform:scale(1.15);}
+.status-btn.s-known{border-color:var(--success);background:rgba(110,200,155,0.2);color:var(--success);}
+.status-btn.s-unsure{border-color:var(--accent);background:rgba(200,169,110,0.2);color:var(--accent);}
+.status-btn.s-unknown{border-color:var(--danger);background:rgba(200,110,126,0.2);color:var(--danger);}
+
+/* FLIP CARD MODAL */
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.78);z-index:1000;display:flex;align-items:center;justify-content:center;padding:20px;backdrop-filter:blur(8px);animation:fadeIn 0.18s ease;}
+.flip-scene{width:500px;max-width:100%;height:310px;perspective:1200px;cursor:pointer;}
+.flip-card{width:100%;height:100%;position:relative;transform-style:preserve-3d;transition:transform 0.5s cubic-bezier(0.4,0,0.2,1);}
+.flip-card.flipped{transform:rotateY(180deg);}
+.flip-front,.flip-back{position:absolute;inset:0;backface-visibility:hidden;border-radius:20px;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:28px;text-align:center;}
+.flip-front{background:linear-gradient(135deg,var(--surface),var(--surface2));border:1px solid var(--border);}
+.flip-back{background:linear-gradient(135deg,rgba(200,169,110,0.12),rgba(126,184,201,0.08));border:1px solid rgba(200,169,110,0.3);transform:rotateY(180deg);}
+.flip-word{font-family:'Playfair Display',serif;font-size:2.1rem;font-weight:900;color:var(--accent);line-height:1.1;margin-bottom:6px;}
+.flip-phonetic{font-family:'DM Mono',monospace;font-size:0.9rem;color:var(--accent3);margin-bottom:10px;}
+.flip-cat-lbl{font-family:'DM Mono',monospace;font-size:0.62rem;color:var(--muted);text-transform:uppercase;letter-spacing:0.15em;margin-bottom:14px;}
+.flip-hint{font-size:0.7rem;color:var(--muted);font-family:'DM Mono',monospace;letter-spacing:0.08em;margin-top:10px;}
+.flip-meaning{font-family:'Playfair Display',serif;font-size:1.45rem;font-weight:700;color:var(--text);margin-bottom:8px;}
+.flip-example-text{font-size:0.8rem;color:var(--muted);font-style:italic;line-height:1.5;max-width:380px;}
+.flip-num{font-family:'DM Mono',monospace;font-size:0.65rem;color:var(--muted);margin-top:10px;}
+.modal-top{position:absolute;top:-42px;right:0;display:flex;gap:8px;}
+.modal-close-btn{background:transparent;border:1px solid var(--border);color:var(--muted);border-radius:7px;padding:5px 11px;cursor:pointer;font-size:0.75rem;font-family:'DM Sans',sans-serif;transition:all 0.2s;}
+.modal-close-btn:hover{border-color:var(--danger);color:var(--danger);}
+.modal-controls{position:absolute;bottom:-52px;left:50%;transform:translateX(-50%);display:flex;gap:8px;white-space:nowrap;}
+.tts-btn{padding:7px 14px;border-radius:8px;border:1px solid var(--border);background:var(--surface2);color:var(--text);font-family:'DM Sans',sans-serif;font-size:0.78rem;cursor:pointer;transition:all 0.2s;display:flex;align-items:center;gap:5px;}
+.tts-btn:hover{border-color:var(--accent2);color:var(--accent2);}
+.tts-btn.speaking{border-color:var(--accent2);color:var(--accent2);background:rgba(126,184,201,0.1);animation:pulse 1s infinite;}
+.tts-src-toggle{font-family:'DM Mono',monospace;font-size:0.65rem;color:var(--muted);cursor:pointer;padding:4px 8px;border:1px solid var(--border);border-radius:5px;background:transparent;transition:all 0.2s;}
+.tts-src-toggle:hover{border-color:var(--accent3);color:var(--accent3);}
+.nav-btn{padding:7px 13px;border-radius:8px;border:1px solid var(--border);background:transparent;color:var(--muted);font-family:'DM Sans',sans-serif;font-size:0.78rem;cursor:pointer;transition:all 0.2s;}
+.nav-btn:hover{border-color:var(--accent);color:var(--accent);}
+
+/* ANALYSIS */
+.analysis-box{background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:16px;margin-top:4px;}
+.analysis-stats{display:flex;gap:20px;flex-wrap:wrap;margin-bottom:12px;}
+.ast{text-align:center;}
+.ast-num{font-family:'Playfair Display',serif;font-size:1.5rem;font-weight:700;line-height:1;}
+.ast-lbl{font-family:'DM Mono',monospace;font-size:0.62rem;color:var(--muted);text-transform:uppercase;letter-spacing:0.08em;margin-top:3px;}
+.unknown-word-chip{display:inline-block;margin:3px;padding:4px 8px;background:rgba(200,110,126,0.15);border:1px solid rgba(200,110,126,0.3);border-radius:5px;font-family:'DM Mono',monospace;font-size:0.71rem;color:var(--danger);}
+
+/* VOCAB */
+.vocab-item{display:grid;grid-template-columns:1fr 1fr auto auto;gap:10px;align-items:center;padding:11px 13px;background:var(--surface2);border:1px solid var(--border);border-radius:8px;margin-bottom:7px;animation:fadeIn 0.3s ease;}
+.vocab-word{font-family:'Playfair Display',serif;font-size:0.96rem;font-weight:700;color:var(--accent);}
+.vocab-field{font-family:'DM Mono',monospace;font-size:0.63rem;color:var(--muted);background:var(--bg);padding:2px 6px;border-radius:4px;border:1px solid var(--border);text-align:center;}
+
+/* QUIZ */
+.quiz-card{background:var(--surface2);border:1px solid var(--border);border-radius:16px;padding:36px;text-align:center;min-height:170px;display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;transition:all 0.3s;margin-bottom:16px;}
+.quiz-card:hover{border-color:var(--accent);}
+.quiz-word{font-family:'Playfair Display',serif;font-size:2.1rem;font-weight:700;color:var(--accent);margin-bottom:8px;}
+
+/* LOG */
+.log-item{display:flex;gap:12px;align-items:flex-start;padding:12px;background:var(--surface2);border:1px solid var(--border);border-radius:8px;margin-bottom:7px;animation:fadeIn 0.3s ease;}
+.log-icon{width:32px;height:32px;border-radius:7px;display:flex;align-items:center;justify-content:center;font-size:0.9rem;flex-shrink:0;}
+
+/* GOALS */
+.goal-item{display:flex;gap:11px;align-items:center;padding:11px 13px;background:var(--surface2);border:1px solid var(--border);border-radius:8px;margin-bottom:7px;animation:fadeIn 0.3s ease;}
+.goal-check{width:20px;height:20px;border:2px solid var(--border);border-radius:5px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all 0.2s;flex-shrink:0;}
+.goal-check.done{background:var(--success);border-color:var(--success);color:#0d0d0f;font-size:0.68rem;}
+
+/* WORD TARGET WIDGET */
+.wt-widget{background:linear-gradient(135deg,rgba(200,169,110,0.07),rgba(126,184,201,0.04));border:1px solid rgba(200,169,110,0.22);border-radius:14px;padding:20px;margin-bottom:16px;}
+.wt-ring-row{display:flex;gap:18px;align-items:center;flex-wrap:wrap;margin-bottom:16px;}
+.wt-ring{position:relative;width:88px;height:88px;flex-shrink:0;}
+.wt-ring svg{transform:rotate(-90deg);}
+.wt-ring-bg{fill:none;stroke:var(--border);stroke-width:7;}
+.wt-ring-fill{fill:none;stroke-width:7;stroke-linecap:round;transition:stroke-dashoffset 0.8s ease;}
+.wt-ring-text{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;}
+.wt-ring-pct{font-family:'Playfair Display',serif;font-size:1.05rem;font-weight:700;line-height:1;}
+.wt-ring-lbl{font-family:'DM Mono',monospace;font-size:0.52rem;color:var(--muted);text-transform:uppercase;letter-spacing:0.08em;margin-top:2px;}
+.wt-targets-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;flex:1;min-width:190px;}
+.wt-target-row{background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:10px 12px;}
+.wt-target-label{font-family:'DM Mono',monospace;font-size:0.62rem;color:var(--muted);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:3px;}
+.wt-target-val{font-family:'Playfair Display',serif;font-size:1.25rem;font-weight:700;color:var(--accent);line-height:1;}
+.wt-target-sub{font-size:0.67rem;color:var(--muted);margin-top:2px;}
+.wt-cat-bars{display:flex;flex-direction:column;gap:7px;}
+.wt-cat-bar-row{display:grid;grid-template-columns:85px 1fr 50px;align-items:center;gap:7px;}
+.wt-cat-bar-label{font-size:0.73rem;color:var(--text);}
+.wt-cat-bar-track{height:5px;background:var(--border);border-radius:99px;overflow:hidden;}
+.wt-cat-bar-fill{height:100%;border-radius:99px;transition:width 0.6s ease;}
+.wt-cat-bar-pct{font-family:'DM Mono',monospace;font-size:0.66rem;color:var(--muted);text-align:right;}
+.wt-set-form{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px;padding-top:12px;border-top:1px solid var(--border);}
+
+/* CAT TARGET GOALS */
+.cat-target-item{display:grid;grid-template-columns:1fr auto auto;gap:10px;align-items:center;padding:12px 14px;background:var(--surface2);border:1px solid var(--border);border-radius:9px;margin-bottom:8px;}
+.cat-target-bar-wrap{margin-top:6px;}
+
+/* SPACED REPETITION */
+.srs-due-badge{background:rgba(200,110,126,0.2);border:1px solid var(--danger);color:var(--danger);border-radius:5px;padding:2px 7px;font-family:'DM Mono',monospace;font-size:0.65rem;display:inline-flex;align-items:center;gap:4px;}
+.srs-card{background:var(--surface2);border:1px solid var(--border);border-radius:12px;padding:24px;text-align:center;min-height:160px;display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;transition:border-color 0.2s;margin-bottom:14px;}
+.srs-card:hover{border-color:var(--accent);}
+.srs-word{font-family:'Playfair Display',serif;font-size:2rem;font-weight:700;color:var(--accent);}
+.srs-difficulty-btns{display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin-top:8px;}
+
+/* WORD PANEL CHIPS */
+.word-chip-card{background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:11px 13px;cursor:pointer;transition:border-color 0.2s;}
+
+/* MISC */
+hr.divider{border:none;border-top:1px solid var(--border);margin:16px 0;}
+.empty-state{text-align:center;padding:32px;color:var(--muted);font-size:0.8rem;}
+.empty-state .emoji{font-size:1.8rem;display:block;margin-bottom:6px;}
+::-webkit-scrollbar{width:5px;height:5px;}::-webkit-scrollbar-track{background:var(--bg);}::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px;}
+@keyframes fadeIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:0.55}}
+@keyframes popIn{0%{transform:scale(0.9);opacity:0}100%{transform:scale(1);opacity:1}}
+@media(max-width:700px){.form-row,.form-row.triple{grid-template-columns:1fr;}.vocab-item{grid-template-columns:1fr 1fr;}.word-table th:nth-child(4),.word-table td:nth-child(4){display:none;}.wt-targets-grid{grid-template-columns:1fr 1fr;}}
+
+/* LOGIN SCREEN */
+.login-screen{position:fixed;inset:0;background:var(--bg);z-index:9999;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:0;}
+.login-screen::before{content:'';position:fixed;inset:0;background:radial-gradient(ellipse 60% 40% at 30% 30%,rgba(200,169,110,0.1) 0%,transparent 60%),radial-gradient(ellipse 50% 50% at 70% 70%,rgba(126,184,201,0.08) 0%,transparent 60%);pointer-events:none;}
+.login-box{background:var(--surface);border:1px solid var(--border);border-radius:20px;padding:44px 48px;text-align:center;max-width:420px;width:90%;position:relative;animation:popIn 0.4s ease;}
+.login-logo{font-family:'Playfair Display',serif;font-size:2.4rem;font-weight:900;margin-bottom:6px;}
+.login-logo span{color:var(--accent);}
+.login-sub{font-family:'DM Mono',monospace;font-size:0.65rem;color:var(--muted);letter-spacing:0.15em;text-transform:uppercase;margin-bottom:32px;}
+.login-desc{font-size:0.85rem;color:var(--muted);margin-bottom:28px;line-height:1.6;}
+.google-btn{display:flex;align-items:center;justify-content:center;gap:12px;width:100%;padding:13px 24px;background:#fff;color:#3c4043;border:none;border-radius:10px;font-family:'DM Sans',sans-serif;font-size:0.92rem;font-weight:500;cursor:pointer;transition:all 0.2s;box-shadow:0 2px 8px rgba(0,0,0,0.3);}
+.google-btn:hover{box-shadow:0 4px 16px rgba(0,0,0,0.4);transform:translateY(-1px);}
+.google-btn svg{flex-shrink:0;}
+.login-note{font-size:0.7rem;color:var(--muted);margin-top:16px;line-height:1.5;}
+
+/* STREAK POPUP */
+.streak-popup{position:fixed;top:24px;left:50%;transform:translateX(-50%) translateY(-120px);z-index:8000;background:linear-gradient(135deg,var(--surface),var(--surface2));border:1px solid rgba(200,169,110,0.4);border-radius:16px;padding:18px 28px;text-align:center;min-width:280px;max-width:380px;box-shadow:0 8px 32px rgba(0,0,0,0.5);transition:transform 0.5s cubic-bezier(0.34,1.56,0.64,1);}
+.streak-popup.show{transform:translateX(-50%) translateY(0);}
+.streak-popup-emoji{font-size:2rem;display:block;margin-bottom:6px;}
+.streak-popup-msg{font-family:'Playfair Display',serif;font-size:1.05rem;font-weight:700;color:var(--accent);line-height:1.3;}
+.streak-popup-sub{font-size:0.75rem;color:var(--muted);margin-top:5px;}
+.streak-popup-bar{height:3px;background:var(--border);border-radius:99px;margin-top:12px;overflow:hidden;}
+.streak-popup-bar-fill{height:100%;background:linear-gradient(90deg,var(--accent),var(--accent2));border-radius:99px;animation:shrinkBar 3s linear forwards;}
+@keyframes shrinkBar{from{width:100%}to{width:0%}}
+
+/* CALENDAR */
+.cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;margin-top:12px;}
+.cal-day-label{font-family:'DM Mono',monospace;font-size:0.6rem;color:var(--muted);text-align:center;padding:4px 0;text-transform:uppercase;}
+.cal-day{border-radius:7px;padding:8px 4px;text-align:center;cursor:pointer;transition:all 0.15s;border:1px solid transparent;position:relative;}
+.cal-day:hover{border-color:var(--accent);background:rgba(200,169,110,0.08);}
+.cal-day.has-data{background:rgba(110,200,155,0.1);border-color:rgba(110,200,155,0.25);}
+.cal-day.today{border-color:var(--accent);background:rgba(200,169,110,0.1);}
+.cal-day.empty{opacity:0;}
+.cal-day-num{font-family:'DM Mono',monospace;font-size:0.68rem;color:var(--muted);}
+.cal-day-count{font-family:'Playfair Display',serif;font-size:0.9rem;font-weight:700;color:var(--success);line-height:1;}
+.cal-tooltip{position:fixed;background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:12px 16px;z-index:5000;min-width:200px;max-width:280px;box-shadow:0 4px 20px rgba(0,0,0,0.5);pointer-events:none;display:none;}
+.cal-tooltip.show{display:block;animation:fadeIn 0.15s ease;}
+.cal-tooltip-word{font-family:'DM Mono',monospace;font-size:0.72rem;padding:3px 7px;background:rgba(110,200,155,0.12);border:1px solid rgba(110,200,155,0.25);border-radius:4px;color:var(--success);display:inline-block;margin:2px;}
+
+</style>
+</head>
+<body>
+
+<!-- LOGIN SCREEN -->
+<div id="login-screen" class="login-screen">
+  <div class="login-box">
+    <div class="login-logo">EngLearn<span>.</span>Hub</div>
+    <div class="login-sub">Hacettepe Üniversitesi · Çeviri &amp; Yorumlama</div>
+    <div class="login-desc">Kelime hedeflerini takip et, spaced repetition ile pekiştir,<br>her cihazdan erişim için giriş yap.</div>
+    <button class="google-btn" onclick="signInWithGoogle()">
+      <svg width="20" height="20" viewBox="0 0 48 48"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/><path fill="none" d="M0 0h48v48H0z"/></svg>
+      Google ile Giriş Yap
+    </button>
+    <div class="login-note">Veriler güvenli şekilde Supabase'de saklanır.<br>Tüm cihazlarından erişebilirsin.</div>
+  </div>
+</div>
+
+<!-- STREAK POPUP -->
+<div id="streak-popup" class="streak-popup">
+  <span class="streak-popup-emoji" id="popup-emoji">🔥</span>
+  <div class="streak-popup-msg" id="popup-msg"></div>
+  <div class="streak-popup-sub" id="popup-sub"></div>
+  <div class="streak-popup-bar"><div class="streak-popup-bar-fill"></div></div>
+</div>
+
+<!-- CALENDAR TOOLTIP -->
+<div id="cal-tooltip" class="cal-tooltip"></div>
+
+<div class="container" id="app-container" style="display:none">
+  <header>
+    <div class="header-inner">
+      <div>
+        <div class="logo">EngLearn<span>.</span>Hub</div>
+        <div class="subtitle">Hacettepe Üniversitesi · Çeviri &amp; Yorumlama</div>
+      </div>
+      <div class="date-display">
+        <div id="user-info" style="display:flex;align-items:center;gap:10px;margin-bottom:8px;justify-content:flex-end"><span id="user-name" style="font-size:0.78rem;color:var(--muted)"></span><img id="user-avatar" src="" style="width:28px;height:28px;border-radius:50%;display:none;border:1px solid var(--border)"><button onclick="signOut()" style="font-size:0.7rem;padding:4px 10px;border-radius:6px;border:1px solid var(--border);background:transparent;color:var(--muted);cursor:pointer;font-family:DM Sans,sans-serif" onmouseover="this.style.borderColor='var(--danger)';this.style.color='var(--danger)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--muted)'">Çıkış</button></div><span class="day" id="dayNum"></span>
+        <span id="dateStr"></span>
+      </div>
+    </div>
+  </header>
+
+  <div class="tabs">
+    <button class="tab-btn active"  onclick="switchTab('dashboard',this)">📊 Genel Bakış</button>
+    <button class="tab-btn"         onclick="switchTab('wordlists',this)">📋 Kelime Listeleri</button>
+    <button class="tab-btn"         onclick="switchTab('srs',this)">🔁 Tekrar <span id="srs-due-dot" class="badge-dot" style="display:none"></span></button>
+    <button class="tab-btn"         onclick="switchTab('vocab',this)">📚 Kişisel Banka</button>
+    <button class="tab-btn"         onclick="switchTab('quiz',this)">🧠 Test Et</button>
+    <button class="tab-btn"         onclick="switchTab('study',this)">📝 Çalışma Kaydı</button>
+    <button class="tab-btn"         onclick="switchTab('goals',this)">🎯 Hedeflerim</button>
+  </div>
+
+  <!-- ===== DASHBOARD ===== -->
+  <div id="panel-dashboard" class="panel active">
+
+    <!-- STREAK BAR top -->
+    <div class="streak-bar">
+      <div class="streak-fire">🔥</div>
+      <div>
+        <div class="streak-num" id="streak-num">0</div>
+        <div class="streak-lbl">Gün Streak</div>
+      </div>
+      <div class="streak-msg" id="streak-msg">Her gün çalışmaya devam et!</div>
+    </div>
+
+    <!-- STATS -->
+    <div class="stats-grid">
+      <div class="stat-card" style="--color:var(--accent)">
+        <div class="stat-label">Kişisel Kelime</div><div class="stat-value" id="stat-words">0</div><div class="stat-sub">bankanda</div>
+      </div>
+      <div class="stat-card" style="--color:var(--success);cursor:pointer" onclick="toggleWordPanel('known')">
+        <div class="stat-label">Ezberimde <span id="known-arrow" style="font-size:0.6rem;opacity:0.6">▼</span></div>
+        <div class="stat-value" id="stat-known">0</div><div class="stat-sub">tıkla &amp; listele</div>
+      </div>
+      <div class="stat-card" style="--color:var(--danger);cursor:pointer" onclick="toggleWordPanel('unknown')">
+        <div class="stat-label">Bilmiyorum <span id="unknown-arrow" style="font-size:0.6rem;opacity:0.6">▼</span></div>
+        <div class="stat-value" id="stat-unknown">0</div><div class="stat-sub">tıkla &amp; listele</div>
+      </div>
+      <div class="stat-card" style="--color:var(--accent2)">
+        <div class="stat-label">Tekrar Bekleyen</div><div class="stat-value" id="stat-srs">0</div><div class="stat-sub">SRS kart</div>
+      </div>
+      <div class="stat-card" style="--color:var(--accent3)">
+        <div class="stat-label">Çalışma Dk</div><div class="stat-value" id="stat-hours">0</div><div class="stat-sub">toplam</div>
+      </div>
+    </div>
+
+    <!-- EXPANDABLE WORD PANELS -->
+    <div id="panel-known-words" style="display:none;margin-bottom:16px">
+      <div class="card" style="border-color:rgba(110,200,155,0.3)">
+        <div class="section-title" style="margin-bottom:14px"><span class="dot" style="background:var(--success)"></span>Ezberlediğim Kelimeler</div>
+        <div id="known-words-content"></div>
+      </div>
+    </div>
+    <div id="panel-unknown-words" style="display:none;margin-bottom:16px">
+      <div class="card" style="border-color:rgba(200,110,126,0.3)">
+        <div class="section-title" style="margin-bottom:14px"><span class="dot" style="background:var(--danger)"></span>Bilmediğim Kelimeler</div>
+        <div id="unknown-words-content"></div>
+      </div>
+    </div>
+
+    <!-- WORD TARGET WIDGET -->
+    <div class="wt-widget">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:8px">
+        <div style="font-family:'Playfair Display',serif;font-size:1.05rem;font-weight:700">🎯 Kelime Hedeflerim</div>
+        <span id="wt-congrats" style="display:none;font-size:0.8rem;color:var(--success)">🎉 Hedefe ulaştın!</span>
+      </div>
+      <div class="wt-ring-row">
+        <div class="wt-ring">
+          <svg width="88" height="88" viewBox="0 0 88 88">
+            <circle class="wt-ring-bg" cx="44" cy="44" r="37"/>
+            <circle class="wt-ring-fill" id="weekly-ring" cx="44" cy="44" r="37" stroke="var(--accent)" stroke-dasharray="232.48" stroke-dashoffset="232.48"/>
+          </svg>
+          <div class="wt-ring-text">
+            <div class="wt-ring-pct" id="weekly-pct" style="color:var(--accent)">0%</div>
+            <div class="wt-ring-lbl">Haftalık</div>
+          </div>
+        </div>
+        <div class="wt-targets-grid">
+          <div class="wt-target-row"><div class="wt-target-label">Ezberlenen</div><div class="wt-target-val"><span id="wt-done">0</span><span style="font-size:0.72rem;color:var(--muted)"> / <span id="wt-goal-disp">300</span></span></div><div class="wt-target-sub">bu hafta</div></div>
+          <div class="wt-target-row"><div class="wt-target-label">Kalan</div><div class="wt-target-val" id="wt-rem" style="color:var(--accent2)">300</div><div class="wt-target-sub">hedefe</div></div>
+          <div class="wt-target-row"><div class="wt-target-label">Toplam</div><div class="wt-target-val" id="wt-total">0</div><div class="wt-target-sub">tüm zamanlar</div></div>
+          <div class="wt-target-row"><div class="wt-target-label">Günlük Ort.</div><div class="wt-target-val" id="wt-avg">0</div><div class="wt-target-sub">kelime/gün</div></div>
+        </div>
+      </div>
+      <div style="font-family:'DM Mono',monospace;font-size:0.62rem;color:var(--muted);text-transform:uppercase;letter-spacing:0.1em;margin-bottom:7px">Kategori İlerlemesi</div>
+      <div class="wt-cat-bars" id="dash-cat-bars"></div>
+    </div>
+
+
+    <!-- DAILY CALENDAR -->
+    <div class="card" style="margin-bottom:16px">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;flex-wrap:wrap;gap:8px">
+        <div class="section-title" style="margin:0"><span class="dot" style="background:var(--accent2)"></span>Günlük Kelime Takvimi</div>
+        <div style="display:flex;gap:8px;align-items:center">
+          <button onclick="calNav(-1)" style="background:transparent;border:1px solid var(--border);color:var(--muted);border-radius:6px;padding:4px 10px;cursor:pointer;font-size:0.8rem">◀</button>
+          <span id="cal-month-label" style="font-family:'DM Mono',monospace;font-size:0.75rem;color:var(--text);min-width:100px;text-align:center"></span>
+          <button onclick="calNav(1)" style="background:transparent;border:1px solid var(--border);color:var(--muted);border-radius:6px;padding:4px 10px;cursor:pointer;font-size:0.8rem">▶</button>
+        </div>
+      </div>
+      <div id="calendar-container"></div>
+    </div>
+    <!-- SKILLS & RECENT -->
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+      <div class="card">
+        <div class="section-title"><span class="dot"></span>Beceri Gelişimi</div>
+        <div class="progress-section"><div class="progress-label"><span>Kelime</span><span style="font-family:'DM Mono',monospace;font-size:0.7rem;color:var(--muted)" id="p-vocab">0%</span></div><div class="progress-bar"><div class="progress-fill" id="pf-vocab" style="width:0%;background:var(--accent)"></div></div></div>
+        <div class="progress-section"><div class="progress-label"><span>Dinleme</span><span style="font-family:'DM Mono',monospace;font-size:0.7rem;color:var(--muted)" id="p-listen">0%</span></div><div class="progress-bar"><div class="progress-fill" id="pf-listen" style="width:0%;background:var(--accent2)"></div></div></div>
+        <div class="progress-section"><div class="progress-label"><span>Çeviri</span><span style="font-family:'DM Mono',monospace;font-size:0.7rem;color:var(--muted)" id="p-trans">0%</span></div><div class="progress-bar"><div class="progress-fill" id="pf-trans" style="width:0%;background:var(--accent3)"></div></div></div>
+        <div class="progress-section"><div class="progress-label"><span>Yorumlama</span><span style="font-family:'DM Mono',monospace;font-size:0.7rem;color:var(--muted)" id="p-interp">0%</span></div><div class="progress-bar"><div class="progress-fill" id="pf-interp" style="width:0%;background:var(--success)"></div></div></div>
+        <div class="progress-section"><div class="progress-label"><span>Yazma</span><span style="font-family:'DM Mono',monospace;font-size:0.7rem;color:var(--muted)" id="p-write">0%</span></div><div class="progress-bar"><div class="progress-fill" id="pf-write" style="width:0%;background:var(--danger)"></div></div></div>
+        <hr class="divider">
+        <div style="font-size:0.73rem;color:var(--muted);margin-bottom:8px">Becerileri güncelle:</div>
+        <div class="form-row triple">
+          <div><label>Kelime</label><input type="number" id="s-vocab" min="0" max="100" placeholder="0-100"></div>
+          <div><label>Dinleme</label><input type="number" id="s-listen" min="0" max="100" placeholder="0-100"></div>
+          <div><label>Çeviri</label><input type="number" id="s-trans" min="0" max="100" placeholder="0-100"></div>
+        </div>
+        <div class="form-row">
+          <div><label>Yorumlama</label><input type="number" id="s-interp" min="0" max="100" placeholder="0-100"></div>
+          <div><label>Yazma</label><input type="number" id="s-write" min="0" max="100" placeholder="0-100"></div>
+        </div>
+        <button class="btn btn-primary btn-sm" onclick="saveSkills()">Kaydet</button>
+      </div>
+      <div class="card">
+        <div class="section-title"><span class="dot" style="background:var(--accent2)"></span>Son Çalışmalar</div>
+        <div id="recent-log"><div class="empty-state" style="padding:16px"><span class="emoji">📭</span>Henüz kayıt yok</div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== WORD LISTS ===== -->
+  <div id="panel-wordlists" class="panel">
+    <div class="card">
+      <div class="wl-cat-tabs" id="wl-cat-tabs">
+        <button class="wl-cat-btn active" onclick="selectCat('medical',this)">🩺 Tıp</button>
+        <button class="wl-cat-btn" onclick="selectCat('legal',this)">⚖️ Hukuk</button>
+        <button class="wl-cat-btn" onclick="selectCat('diplomatic',this)">🌐 Diplomatik</button>
+        <button class="wl-cat-btn" onclick="selectCat('academic',this)">🎓 Akademik</button>
+        <button class="wl-cat-btn" onclick="selectCat('literary',this)">📖 Edebi</button>
+        <button class="wl-cat-btn" onclick="selectCat('technical',this)">⚙️ Teknik</button>
+      </div>
+      <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:10px">
+        <div style="font-family:'Playfair Display',serif;font-size:1rem;font-weight:700" id="wl-session-title"></div>
+        <div id="wl-session-info" style="font-size:0.8rem;color:var(--muted)"></div>
+      </div>
+      <div class="wl-prog-bar"><div class="wl-prog-fill" id="wl-prog-fill" style="width:0%"></div></div>
+      <div id="wl-session-btns" style="display:flex;gap:7px;flex-wrap:wrap;margin-bottom:14px"></div>
+      <div id="wl-table-wrap" style="overflow-x:auto"></div>
+    </div>
+    <div class="card" id="wl-analysis-card" style="display:none">
+      <div class="section-title"><span class="dot" style="background:var(--accent2)"></span>Günlük Analiz</div>
+      <div id="wl-analysis-content"></div>
+    </div>
+  </div>
+
+  <!-- ===== SPACED REPETITION ===== -->
+  <div id="panel-srs" class="panel">
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:16px">
+      <div class="stat-card" style="--color:var(--danger)"><div class="stat-label">Bugün Bekleyen</div><div class="stat-value" id="srs-due-count">0</div><div class="stat-sub">tekrar edilecek</div></div>
+      <div class="stat-card" style="--color:var(--accent)"><div class="stat-label">Toplam Kart</div><div class="stat-value" id="srs-total-count">0</div><div class="stat-sub">SRS'te</div></div>
+      <div class="stat-card" style="--color:var(--success)"><div class="stat-label">Tamamlanan</div><div class="stat-value" id="srs-done-count">0</div><div class="stat-sub">bugün</div></div>
+    </div>
+    <div id="srs-session-area"></div>
+    <div class="card" style="margin-top:14px">
+      <div class="section-title"><span class="dot" style="background:var(--accent3)"></span>Tüm SRS Kartları</div>
+      <div id="srs-all-cards" style="max-height:320px;overflow-y:auto"></div>
+    </div>
+  </div>
+
+  <!-- ===== VOCAB BANK ===== -->
+  <div id="panel-vocab" class="panel">
+    <div class="card">
+      <div class="section-title"><span class="dot"></span>Yeni Kelime Ekle</div>
+      <div class="form-row"><div><label>İngilizce</label><input type="text" id="v-word" placeholder="word"></div><div><label>Türkçe</label><input type="text" id="v-meaning" placeholder="anlam"></div></div>
+      <div class="form-row"><div><label>Örnek Cümle</label><input type="text" id="v-example" placeholder="Example sentence..."></div><div><label>Alan</label><select id="v-field"><option value="genel">🌐 Genel</option><option value="medical">🩺 Tıp</option><option value="legal">⚖️ Hukuk</option><option value="academic">🎓 Akademik</option><option value="literary">📖 Edebi</option><option value="technical">⚙️ Teknik</option></select></div></div>
+      <button class="btn btn-primary" onclick="addVocab()">+ Ekle</button>
+    </div>
+    <div class="card">
+      <div style="display:flex;gap:9px;margin-bottom:13px;flex-wrap:wrap">
+        <input type="text" id="vocab-search" placeholder="Ara..." style="flex:1;min-width:120px" oninput="renderVocab()">
+        <select id="vocab-filter" onchange="renderVocab()" style="width:auto"><option value="">Tüm Alanlar</option><option value="genel">Genel</option><option value="medical">Tıp</option><option value="legal">Hukuk</option><option value="academic">Akademik</option><option value="literary">Edebi</option><option value="technical">Teknik</option></select>
+      </div>
+      <div id="vocab-list"><div class="empty-state"><span class="emoji">📚</span>Henüz kelime eklenmedi</div></div>
+    </div>
+  </div>
+
+  <!-- ===== QUIZ ===== -->
+  <div id="panel-quiz" class="panel">
+    <div class="card">
+      <div class="section-title"><span class="dot" style="background:var(--accent2)"></span>Kişisel Bankandan Quiz</div>
+      <div id="quiz-card" class="quiz-card" onclick="flipQuiz()"><div class="quiz-word" id="quiz-word">Hazır mısın?</div><div id="quiz-hint" style="font-size:0.78rem;color:var(--muted);margin-top:8px">Karta tıkla →</div></div>
+      <div style="display:flex;gap:9px;justify-content:center;flex-wrap:wrap">
+        <button class="btn btn-ghost" onclick="prevQuiz()">← Önceki</button>
+        <button class="btn btn-primary" onclick="nextQuiz()">Sonraki →</button>
+        <button class="btn btn-ghost" onclick="initQuiz()">🔀 Karıştır</button>
+      </div>
+      <div style="text-align:center;margin-top:10px;font-family:'DM Mono',monospace;font-size:0.72rem;color:var(--muted)" id="quiz-progress">— / —</div>
+    </div>
+  </div>
+
+  <!-- ===== STUDY LOG ===== -->
+  <div id="panel-study" class="panel">
+    <div class="card">
+      <div class="section-title"><span class="dot"></span>Çalışma Ekle</div>
+      <div class="form-row triple">
+        <div><label>Konu</label><input type="text" id="log-topic" placeholder="Bugün ne çalıştın?"></div>
+        <div><label>Süre (dk)</label><input type="number" id="log-mins" min="1" placeholder="30"></div>
+        <div><label>Tür</label><select id="log-type"><option value="vocab">📚 Kelime</option><option value="listen">🎧 Dinleme</option><option value="trans">✍️ Çeviri</option><option value="interp">🎙️ Yorumlama</option><option value="write">📝 Yazma</option><option value="read">📖 Okuma</option></select></div>
+      </div>
+      <button class="btn btn-primary" onclick="addLog()">+ Kaydet</button>
+    </div>
+    <div class="card">
+      <div class="section-title"><span class="dot" style="background:var(--accent2)"></span>Çalışma Geçmişi</div>
+      <div id="study-log-list"><div class="empty-state"><span class="emoji">📋</span>Henüz kayıt yok</div></div>
+    </div>
+  </div>
+
+  <!-- ===== GOALS ===== -->
+  <div id="panel-goals" class="panel">
+
+    <!-- WORD TARGET CONFIG -->
+    <div class="wt-widget">
+      <div style="font-family:'Playfair Display',serif;font-size:1.05rem;font-weight:700;margin-bottom:16px">🎯 Kelime Hedef Ayarları</div>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px">
+        <div class="card" style="margin:0;padding:14px">
+          <label>Haftalık Kelime Hedefi</label>
+          <div style="display:flex;gap:8px;margin-top:6px">
+            <input type="number" id="weekly-goal-input" min="10" max="9999" placeholder="300">
+            <button class="btn btn-primary btn-sm" onclick="saveWeeklyGoal()">Kaydet</button>
+          </div>
+          <div style="font-size:0.72rem;color:var(--muted);margin-top:6px">Şu an: <span id="current-weekly-goal" style="color:var(--accent)">300</span> kelime/hafta</div>
+        </div>
+        <div class="card" style="margin:0;padding:14px">
+          <label>Streak Uyarısı</label>
+          <div style="margin-top:8px;display:flex;align-items:center;gap:10px">
+            <input type="checkbox" id="streak-warn-toggle" onchange="saveStreakWarn()" style="width:auto;width:18px;height:18px;cursor:pointer">
+            <span style="font-size:0.82rem">Streak kırılınca uyar</span>
+          </div>
+          <div style="font-size:0.72rem;color:var(--muted);margin-top:6px">Son çalışma: <span id="last-study-lbl" style="color:var(--accent2)">—</span></div>
+        </div>
+      </div>
+
+      <div style="font-family:'DM Mono',monospace;font-size:0.63rem;color:var(--muted);text-transform:uppercase;letter-spacing:0.1em;margin-bottom:10px">Kategori Hedefleri</div>
+      <div id="cat-targets-list"></div>
+    </div>
+
+    <!-- CUSTOM GOALS -->
+    <div class="card">
+      <div class="section-title"><span class="dot" style="background:var(--success)"></span>Kişisel Hedef Ekle</div>
+      <div class="form-row"><div><label>Hedef</label><input type="text" id="goal-text" placeholder="500 kelime ezberle..."></div><div><label>Bitiş Tarihi</label><input type="date" id="goal-date"></div></div>
+      <div class="form-row single"><div><label>Kategori</label><select id="goal-cat"><option value="vocab">📚 Kelime</option><option value="listen">🎧 Dinleme</option><option value="trans">✍️ Çeviri</option><option value="interp">🎙️ Yorumlama</option><option value="write">📝 Yazma</option><option value="other">🎯 Diğer</option></select></div></div>
+      <button class="btn btn-primary" onclick="addGoal()">+ Hedef Ekle</button>
+    </div>
+    <div class="card">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+        <div class="section-title" style="margin:0"><span class="dot" style="background:var(--success)"></span>Hedeflerim</div>
+        <div style="font-size:0.75rem;color:var(--muted)" id="goals-summary"></div>
+      </div>
+      <div id="goals-list"><div class="empty-state"><span class="emoji">🎯</span>Henüz hedef eklenmedi</div></div>
+    </div>
+  </div>
+
+</div><!-- /container -->
+
+<script>
+const WORD_DB = {
+  medical:[
+    {w:"abdomen",t:"karın bölgesi",e:"The surgeon made an incision in the abdomen."},
+    {w:"acute",t:"akut, ani başlayan",e:"The patient presented with acute chest pain."},
+    {w:"anesthesia",t:"anestezi",e:"General anesthesia was administered before surgery."},
+    {w:"benign",t:"iyi huylu",e:"The biopsy confirmed the tumor was benign."},
+    {w:"biopsy",t:"biyopsi",e:"A biopsy was taken from the affected tissue."},
+    {w:"cardiac",t:"kalple ilgili",e:"She was admitted for cardiac monitoring."},
+    {w:"catheter",t:"kateter",e:"A urinary catheter was inserted postoperatively."},
+    {w:"chronic",t:"kronik",e:"He suffers from chronic back pain."},
+    {w:"diagnosis",t:"tanı, teşhis",e:"An early diagnosis significantly improves outcomes."},
+    {w:"edema",t:"ödem, şişlik",e:"The edema in his legs worsened overnight."},
+    {w:"embolism",t:"emboli",e:"She was treated for a pulmonary embolism."},
+    {w:"endoscopy",t:"endoskopi",e:"An endoscopy revealed inflammation in the stomach."},
+    {w:"etiology",t:"etiyoloji, hastalık nedeni",e:"The etiology of the disease remains unknown."},
+    {w:"fracture",t:"kırık",e:"The X-ray showed a hairline fracture of the tibia."},
+    {w:"hemorrhage",t:"kanama",e:"Internal hemorrhage was detected during surgery."},
+    {w:"hypertension",t:"yüksek tansiyon",e:"Hypertension is a major risk factor for stroke."},
+    {w:"immune",t:"bağışıklık",e:"The patient's immune system was compromised."},
+    {w:"inflammation",t:"iltihap",e:"Inflammation of the joints causes arthritis."},
+    {w:"intravenous",t:"damar içi (IV)",e:"The antibiotic was given intravenously."},
+    {w:"malignant",t:"kötü huylu",e:"The malignant cells had spread to nearby tissue."},
+    {w:"metastasis",t:"metastaz",e:"Metastasis to the liver was confirmed by scan."},
+    {w:"necrosis",t:"nekroz, doku ölümü",e:"Necrosis of the tissue required amputation."},
+    {w:"neurological",t:"nörolojik",e:"The patient showed neurological symptoms."},
+    {w:"oncology",t:"onkoloji, kanser bilimi",e:"She was referred to the oncology department."},
+    {w:"palliative",t:"palyatif, semptom giderici",e:"Palliative care focuses on comfort, not cure."},
+    {w:"pathogen",t:"patojen",e:"The pathogen was identified as a novel bacterium."},
+    {w:"pharmacology",t:"farmakoloji",e:"Pharmacology examines drug interactions in the body."},
+    {w:"prognosis",t:"prognoz, hastalık seyri",e:"The prognosis for full recovery is good."},
+    {w:"prophylaxis",t:"profilaksi, önleyici tedavi",e:"Antibiotic prophylaxis was given before the procedure."},
+    {w:"pulmonary",t:"akciğere ait",e:"Pulmonary function tests showed reduced capacity."},
+    {w:"remission",t:"remisyon",e:"The cancer went into complete remission."},
+    {w:"sepsis",t:"sepsis, kan zehirlenmesi",e:"The patient developed sepsis after the infection."},
+    {w:"suture",t:"dikiş, sütür",e:"The wound was closed with dissolvable sutures."},
+    {w:"symptom",t:"semptom, belirti",e:"Fever is a common symptom of infection."},
+    {w:"syndrome",t:"sendrom",e:"She was diagnosed with irritable bowel syndrome."},
+    {w:"tachycardia",t:"taşikardi",e:"Tachycardia was noted on the ECG monitor."},
+    {w:"thrombosis",t:"tromboz",e:"Deep vein thrombosis requires anticoagulant therapy."},
+    {w:"trauma",t:"travma",e:"The patient arrived with severe abdominal trauma."},
+    {w:"ulcer",t:"ülser, yara",e:"A stomach ulcer was found during endoscopy."},
+    {w:"vascular",t:"damarsal",e:"Vascular disease increases risk of heart attack."},
+    {w:"venous",t:"toplardamarla ilgili",e:"Venous blood was drawn for laboratory testing."},
+    {w:"vital signs",t:"yaşamsal bulgular",e:"Vital signs were monitored every four hours."},
+    {w:"antibody",t:"antikor",e:"Antibodies were detected in the blood sample."},
+    {w:"congenital",t:"doğuştan gelen",e:"The child had a congenital heart defect."},
+    {w:"defibrillation",t:"defibrilasyon",e:"Defibrillation restored the patient's normal rhythm."},
+    {w:"dialysis",t:"diyaliz",e:"The patient required dialysis three times a week."},
+    {w:"enzyme",t:"enzim",e:"Elevated liver enzymes were found in the blood test."},
+    {w:"lesion",t:"lezyon, yara",e:"A suspicious lesion was found on the MRI scan."},
+    {w:"sedative",t:"sedatif, yatıştırıcı",e:"A mild sedative was administered before the procedure."},
+    {w:"sterile",t:"steril",e:"All surgical instruments must be sterile."},
+    {w:"aneurysm",t:"anevrizma",e:"The aneurysm was repaired with endovascular surgery."},
+    {w:"antibiotic",t:"antibiyotik",e:"A broad-spectrum antibiotic was prescribed."},
+    {w:"arrhythmia",t:"aritmi",e:"Arrhythmia was detected during the stress test."},
+    {w:"atherosclerosis",t:"ateroskleroz",e:"Atherosclerosis causes narrowing of the arteries."},
+    {w:"chemotherapy",t:"kemoterapi",e:"She underwent six cycles of chemotherapy."},
+    {w:"cirrhosis",t:"siroz",e:"Long-term alcohol use led to liver cirrhosis."},
+    {w:"coagulation",t:"pıhtılaşma",e:"Coagulation studies showed a prolonged clotting time."},
+    {w:"comorbidity",t:"eş tanı, ek hastalık",e:"Comorbidities complicate the treatment plan."},
+    {w:"contraindication",t:"kontrendikasyon",e:"Aspirin is a contraindication in children with viral illness."},
+    {w:"cortisol",t:"kortizol",e:"Elevated cortisol levels indicate chronic stress."},
+    {w:"dementia",t:"demans, bunama",e:"Alzheimer's disease is the most common form of dementia."},
+    {w:"dyspnea",t:"nefes darlığı",e:"The patient reported severe dyspnea on exertion."},
+    {w:"electrolyte",t:"elektrolit",e:"Electrolyte imbalances can cause muscle cramps."},
+    {w:"endocrine",t:"endokrin, iç salgı",e:"Diabetes is an endocrine disorder."},
+    {w:"epidemiology",t:"epidemiyoloji",e:"Epidemiology studies disease distribution in populations."},
+    {w:"fibrosis",t:"fibrozis",e:"Pulmonary fibrosis reduces lung elasticity."},
+    {w:"gangrene",t:"kangren",e:"Gangrene developed due to poor blood circulation."},
+    {w:"gastritis",t:"gastrit",e:"NSAIDs can cause or worsen gastritis."},
+    {w:"hematoma",t:"hematom, kan birikmesi",e:"A subdural hematoma was found on the CT scan."},
+    {w:"hemoglobin",t:"hemoglobin",e:"Low hemoglobin levels indicate anemia."},
+    {w:"hepatic",t:"karaciğere ait",e:"Hepatic failure requires immediate medical attention."},
+    {w:"homeostasis",t:"homeostazi, iç denge",e:"The body maintains homeostasis through various mechanisms."},
+    {w:"hypoglycemia",t:"hipoglisemi",e:"Hypoglycemia caused the patient to lose consciousness."},
+    {w:"intubation",t:"entübasyon",e:"Endotracheal intubation secured the patient's airway."},
+    {w:"ischemia",t:"iskemi, kan azlığı",e:"Cardiac ischemia can lead to myocardial infarction."},
+    {w:"jaundice",t:"sarılık",e:"Jaundice is characterized by yellowing of the skin."},
+    {w:"laparoscopy",t:"laparoskopi",e:"The appendix was removed via laparoscopy."},
+    {w:"lymphoma",t:"lenfoma",e:"Non-Hodgkin lymphoma is treated with chemotherapy."},
+    {w:"morbidity",t:"hastalık oranı",e:"Postoperative morbidity was significantly reduced."},
+    {w:"mortality",t:"ölüm oranı",e:"Surgical mortality rates have improved dramatically."},
+    {w:"myocardial",t:"kalp kasına ait",e:"Myocardial infarction is commonly called a heart attack."},
+    {w:"nausea",t:"bulantı",e:"Nausea is a frequent side effect of chemotherapy."},
+    {w:"neuropathy",t:"nöropati, sinir hasarı",e:"Diabetic neuropathy affects peripheral nerves."},
+    {w:"obesity",t:"obezite",e:"Obesity increases the risk of type 2 diabetes."},
+    {w:"opioid",t:"opioid, ağrı kesici",e:"Opioid prescriptions require careful monitoring."},
+    {w:"orthopedic",t:"ortopedik",e:"Orthopedic surgery corrected the spinal deformity."},
+    {w:"osteoporosis",t:"osteoporoz",e:"Osteoporosis leads to increased fracture risk."},
+    {w:"palpitation",t:"çarpıntı",e:"The patient complained of frequent palpitations."},
+    {w:"pathology",t:"patoloji",e:"Pathology confirmed the presence of cancer cells."},
+    {w:"peritoneum",t:"periton",e:"Peritonitis is inflammation of the peritoneum."},
+    {w:"platelet",t:"trombosit",e:"Low platelet counts increase bleeding risk."},
+    {w:"prosthesis",t:"protez",e:"A hip prosthesis was fitted after the fracture."},
+    {w:"radiography",t:"radyografi, röntgen",e:"Chest radiography revealed bilateral consolidation."},
+    {w:"renal",t:"böbreğe ait",e:"Renal failure may require dialysis."},
+    {w:"resuscitation",t:"resüsitasyon, canlandırma",e:"Cardiopulmonary resuscitation was performed immediately."},
+    {w:"sclerosis",t:"skleroz, sertleşme",e:"Multiple sclerosis affects the central nervous system."},
+    {w:"serology",t:"seroloji",e:"Serology tests detected elevated antibody levels."},
+    {w:"triage",t:"triyaj, acil önceliklendirme",e:"Triage was performed to prioritize the wounded."},
+  ],
+  legal:[
+    {w:"acquittal",t:"beraat",e:"The jury reached a verdict of acquittal."},
+    {w:"affidavit",t:"yeminli ifade",e:"She submitted an affidavit to support her claim."},
+    {w:"allegation",t:"iddia, suçlama",e:"The allegations were denied by the defendant."},
+    {w:"appellate",t:"temyize ait",e:"The case was taken to the appellate court."},
+    {w:"arbitration",t:"tahkim",e:"The dispute was resolved through binding arbitration."},
+    {w:"arraignment",t:"ilk duruşma",e:"The suspect appeared at arraignment on Monday."},
+    {w:"bail",t:"kefalet",e:"Bail was set at fifty thousand dollars."},
+    {w:"burden of proof",t:"ispat yükü",e:"The burden of proof lies with the prosecution."},
+    {w:"civil",t:"medeni (hukuki)",e:"This is a civil matter, not a criminal one."},
+    {w:"claimant",t:"davacı",e:"The claimant sought compensation for lost wages."},
+    {w:"coercion",t:"zorlama, baskı",e:"The contract was signed under coercion."},
+    {w:"compliance",t:"uyum",e:"Compliance with the regulation is mandatory."},
+    {w:"contempt",t:"mahkeme kararına aykırı hareket",e:"He was held in contempt of court."},
+    {w:"contract",t:"sözleşme",e:"Both parties signed the contract willingly."},
+    {w:"conviction",t:"mahkumiyet",e:"The conviction was overturned on appeal."},
+    {w:"counsel",t:"avukat, hukuki danışman",e:"She retained counsel before the deposition."},
+    {w:"culpable",t:"suçlu, sorumlu",e:"The company was deemed culpable for the accident."},
+    {w:"damages",t:"tazminat",e:"The court awarded substantial damages to the plaintiff."},
+    {w:"defendant",t:"sanık, davalı",e:"The defendant pleaded not guilty."},
+    {w:"deposition",t:"ifade alma",e:"The deposition was conducted by the opposing counsel."},
+    {w:"due process",t:"hukuki süreç",e:"Due process guarantees a fair trial."},
+    {w:"embezzlement",t:"zimmete geçirme",e:"He was charged with embezzlement of company funds."},
+    {w:"evidence",t:"delil, kanıt",e:"Forensic evidence was presented to the jury."},
+    {w:"extradition",t:"suçlu teslimi",e:"An extradition treaty governs the transfer of suspects."},
+    {w:"felony",t:"ağır suç",e:"Armed robbery is classified as a felony."},
+    {w:"fraud",t:"dolandırıcılık",e:"The accountant was convicted of tax fraud."},
+    {w:"habeas corpus",t:"habeas corpus, özgürlük emri",e:"A habeas corpus petition was filed immediately."},
+    {w:"indictment",t:"iddianame",e:"The grand jury returned an indictment."},
+    {w:"injunction",t:"ihtiyati tedbir",e:"A court injunction halted the construction project."},
+    {w:"jurisdiction",t:"yargı yetkisi",e:"The case falls under federal jurisdiction."},
+    {w:"jurisprudence",t:"hukuk bilimi, içtihat",e:"The ruling set new precedent in jurisprudence."},
+    {w:"jury",t:"jüri",e:"The jury deliberated for three days."},
+    {w:"lawsuit",t:"dava",e:"She filed a lawsuit against the manufacturer."},
+    {w:"liability",t:"sorumluluk",e:"The company denied all liability."},
+    {w:"litigation",t:"yargılama süreci",e:"Litigation costs were enormous for both parties."},
+    {w:"mandate",t:"emir, zorunluluk",e:"The court issued a mandate requiring disclosure."},
+    {w:"mediation",t:"arabuluculuk",e:"Mediation helped the parties reach a settlement."},
+    {w:"misdemeanor",t:"hafif suç",e:"Shoplifting is typically classified as a misdemeanor."},
+    {w:"negligence",t:"ihmal",e:"The doctor was sued for medical negligence."},
+    {w:"oath",t:"yemin",e:"The witness was administered an oath before testifying."},
+    {w:"parole",t:"şartlı tahliye",e:"He was released on parole after five years."},
+    {w:"perjury",t:"yalancı tanıklık",e:"She was charged with perjury for lying under oath."},
+    {w:"plaintiff",t:"davacı",e:"The plaintiff sought compensatory damages."},
+    {w:"plea",t:"savunma, itiraz",e:"The defendant entered a plea of guilty."},
+    {w:"precedent",t:"emsal karar",e:"This ruling establishes a legal precedent."},
+    {w:"prosecution",t:"savcılık",e:"The prosecution presented its closing argument."},
+    {w:"statute",t:"kanun, yasa",e:"The statute of limitations had expired."},
+    {w:"subpoena",t:"celp, mahkeme çağrısı",e:"A subpoena was issued for the financial records."},
+    {w:"testimony",t:"tanıklık, ifade",e:"Her testimony was crucial to the case."},
+    {w:"verdict",t:"karar, hüküm",e:"The jury delivered a unanimous verdict."},
+    {w:"waiver",t:"feragat",e:"He signed a waiver of his right to a jury trial."},
+    {w:"warrant",t:"arama emri",e:"The judge issued a search warrant."},
+    {w:"accessory",t:"suç ortağı",e:"She was charged as an accessory to the crime."},
+    {w:"adjudication",t:"yargısal karar verme",e:"Adjudication of the dispute took two years."},
+    {w:"admissible",t:"kabul edilebilir (delil)",e:"The recording was ruled admissible as evidence."},
+    {w:"annulment",t:"iptal, fesih",e:"The marriage was dissolved through annulment."},
+    {w:"appeal",t:"temyiz, itiraz",e:"The defense filed an appeal against the sentence."},
+    {w:"attorney",t:"avukat",e:"The attorney advised against signing the contract."},
+    {w:"breach",t:"ihlal",e:"There was a clear breach of contract."},
+    {w:"case law",t:"içtihat hukuku",e:"Case law supports the claimant's position."},
+    {w:"charge",t:"suçlama",e:"He faced charges of assault and battery."},
+    {w:"civil rights",t:"medeni haklar",e:"The case raised important civil rights issues."},
+    {w:"clemency",t:"af, merhamet",e:"The governor granted clemency to the prisoner."},
+    {w:"collateral",t:"teminat, ipotek",e:"He used his property as collateral for the loan."},
+    {w:"common law",t:"örf hukuku",e:"The contract is governed by common law principles."},
+    {w:"competency",t:"ehliyet, yeterlilik",e:"The defendant's competency to stand trial was questioned."},
+    {w:"confidentiality",t:"gizlilik",e:"Attorney-client confidentiality is a fundamental right."},
+    {w:"confiscation",t:"müsadere, el koyma",e:"Confiscation of assets followed the conviction."},
+    {w:"consent",t:"rıza, muvafakat",e:"Informed consent is required before treatment."},
+    {w:"constitutional",t:"anayasal",e:"The law was challenged on constitutional grounds."},
+    {w:"copyright",t:"telif hakkı",e:"Copyright infringement carries severe penalties."},
+    {w:"corroborate",t:"doğrulamak",e:"The second witness corroborated the testimony."},
+    {w:"counterclaim",t:"karşı dava",e:"The defendant filed a counterclaim for damages."},
+    {w:"credibility",t:"güvenilirlik",e:"The witness's credibility was attacked on cross-examination."},
+    {w:"cross-examination",t:"çapraz sorgu",e:"Cross-examination highlighted several inconsistencies."},
+    {w:"custody",t:"velayet, tutukluluk",e:"The court awarded joint custody of the children."},
+    {w:"decree",t:"kararname",e:"A court decree ended the partnership."},
+    {w:"defamation",t:"iftira",e:"Defamation requires proof of false statements."},
+    {w:"defraud",t:"dolandırmak",e:"He was convicted of attempting to defraud investors."},
+    {w:"deliberation",t:"müzakere",e:"Jury deliberation lasted over twelve hours."},
+    {w:"diligence",t:"özen",e:"Due diligence was performed before signing."},
+    {w:"discharge",t:"tahliye, beraat",e:"The court ordered the immediate discharge of the defendant."},
+    {w:"discovery",t:"keşif, belge talebi",e:"Discovery revealed key emails between the parties."},
+    {w:"dismissal",t:"davanın düşürülmesi",e:"The motion for dismissal was denied."},
+    {w:"dissent",t:"karşı oy",e:"The judge wrote a strong dissenting opinion."},
+    {w:"docket",t:"duruşma takvimi",e:"The case is on the court's docket for next month."},
+    {w:"domicile",t:"ikametgah",e:"The company's domicile determines which court has jurisdiction."},
+    {w:"encumbrance",t:"rehin, ipotek yükü",e:"The property had a financial encumbrance."},
+    {w:"estoppel",t:"estoppel, inkâr yasağı",e:"The doctrine of estoppel prevented the party from changing its position."},
+    {w:"exhibit",t:"delil belgesi",e:"Exhibit A was a photograph of the crime scene."},
+    {w:"exonerate",t:"aklamak, beraat ettirmek",e:"New DNA evidence exonerated the convicted man."},
+    {w:"expert witness",t:"bilirkişi",e:"An expert witness testified about the financial records."},
+    {w:"forfeiture",t:"müsadere, hak kaybı",e:"Forfeiture of the vehicle was ordered by the court."},
+    {w:"grand jury",t:"büyük jüri",e:"The grand jury indicted the suspect."},
+    {w:"grievance",t:"şikayet, haksızlık",e:"The grievance was filed with the labor board."},
+    {w:"immunity",t:"dokunulmazlık",e:"The witness was granted immunity from prosecution."},
+    {w:"injurious",t:"zararlı, haksız",e:"The injurious conduct led to a civil lawsuit."},
+    {w:"insolvent",t:"iflas etmiş, ödeme güçsüzü",e:"The company was declared insolvent."},
+    {w:"intestate",t:"vasiyetsiz ölen",e:"He died intestate, leaving no will."},
+  ],
+  diplomatic:[
+    {w:"accreditation",t:"akreditasyon",e:"The ambassador presented his accreditation to the president."},
+    {w:"accord",t:"anlaşma, mutabakat",e:"The peace accord was signed by both leaders."},
+    {w:"allegiance",t:"sadakat, bağlılık",e:"Citizens pledge allegiance to their nation's constitution."},
+    {w:"ambassador",t:"büyükelçi",e:"The ambassador was summoned to the foreign ministry."},
+    {w:"annexation",t:"ilhak",e:"The annexation of the territory was internationally condemned."},
+    {w:"arbitration",t:"uluslararası tahkim",e:"The boundary dispute was settled through arbitration."},
+    {w:"armistice",t:"ateşkes",e:"An armistice was declared after months of fighting."},
+    {w:"asylum",t:"sığınma hakkı",e:"The dissident was granted political asylum."},
+    {w:"bilateral",t:"ikili, iki taraflı",e:"Bilateral trade agreements benefit both economies."},
+    {w:"boycott",t:"boykot",e:"Several nations announced a boycott of the summit."},
+    {w:"ceasefire",t:"ateşkes",e:"A ceasefire was negotiated by UN mediators."},
+    {w:"communiqué",t:"resmi bildiri",e:"A joint communiqué was issued after the summit."},
+    {w:"concession",t:"taviz",e:"Both sides made concessions during the negotiations."},
+    {w:"consul",t:"konsolos",e:"The consul assisted citizens stranded abroad."},
+    {w:"convention",t:"uluslararası sözleşme",e:"The Geneva Convention protects prisoners of war."},
+    {w:"credentials",t:"güven mektubu",e:"The envoy presented his credentials to the government."},
+    {w:"declaration",t:"bildirge",e:"The declaration called for an end to hostilities."},
+    {w:"delegation",t:"heyet, delegasyon",e:"A high-level delegation attended the conference."},
+    {w:"détente",t:"yumuşama",e:"Détente between the superpowers reduced Cold War tensions."},
+    {w:"diplomacy",t:"diplomasi",e:"Skilled diplomacy averted a military confrontation."},
+    {w:"embargo",t:"ambargo",e:"An economic embargo was imposed on the regime."},
+    {w:"envoy",t:"özel temsilci, elçi",e:"A special envoy was dispatched to mediate the conflict."},
+    {w:"extradition",t:"suçlu iadesi",e:"The extradition request was approved by the court."},
+    {w:"foreign policy",t:"dış politika",e:"Foreign policy is shaped by national interest."},
+    {w:"geopolitics",t:"jeopolitik",e:"Geopolitics plays a critical role in alliance formation."},
+    {w:"hegemony",t:"hegemonya",e:"Regional hegemony shifted after the war."},
+    {w:"humanitarian",t:"insani yardım",e:"A humanitarian corridor was established for civilians."},
+    {w:"immunity",t:"dokunulmazlık",e:"Diplomatic immunity protects foreign officials from prosecution."},
+    {w:"imperialism",t:"emperyalizm",e:"Imperialism shaped the borders of many nations."},
+    {w:"insurgency",t:"ayaklanma",e:"The government struggled to contain the insurgency."},
+    {w:"intervention",t:"müdahale",e:"Military intervention was authorized by the Security Council."},
+    {w:"mandate",t:"manda, yetki",e:"The mandate was renewed by the General Assembly."},
+    {w:"mediation",t:"arabuluculuk",e:"International mediation broke the diplomatic deadlock."},
+    {w:"multilateral",t:"çok taraflı",e:"A multilateral approach was taken to the climate crisis."},
+    {w:"neutrality",t:"tarafsızlık",e:"Switzerland maintains strict neutrality in conflicts."},
+    {w:"normalization",t:"normalleşme",e:"The normalization of relations took several years."},
+    {w:"protocol",t:"protokol",e:"Diplomatic protocol requires specific formal greetings."},
+    {w:"ratification",t:"onay, tasdik",e:"Ratification of the treaty took three years."},
+    {w:"reparations",t:"savaş tazminatı",e:"Reparations were paid following the peace treaty."},
+    {w:"resolution",t:"karar (BM)",e:"A UN Security Council resolution condemned the action."},
+    {w:"sanctions",t:"yaptırımlar",e:"Economic sanctions were imposed in response."},
+    {w:"sovereignty",t:"egemenlik",e:"National sovereignty is recognized in international law."},
+    {w:"summit",t:"zirve toplantısı",e:"The G7 summit addressed global economic issues."},
+    {w:"treaty",t:"antlaşma",e:"The trade treaty was signed by twelve nations."},
+    {w:"ultimatum",t:"ültimatom",e:"The ultimatum was rejected, leading to conflict."},
+    {w:"unilateral",t:"tek taraflı",e:"The unilateral withdrawal surprised allies."},
+    {w:"veto",t:"veto",e:"Russia used its veto to block the resolution."},
+    {w:"visa",t:"vize",e:"A diplomatic visa was issued for the official visit."},
+    {w:"referendum",t:"referandum",e:"The referendum determined the region's status."},
+    {w:"reconnaissance",t:"keşif, istihbarat",e:"Reconnaissance aircraft monitored the border."},
+  ],
+  academic:[
+    {w:"abstract",t:"özet, soyut",e:"The abstract summarizes the paper's key findings."},
+    {w:"ambiguous",t:"belirsiz, çift anlamlı",e:"The results were ambiguous and require further study."},
+    {w:"analogy",t:"analoji, benzetme",e:"The professor used an analogy to explain the concept."},
+    {w:"annotation",t:"dipnot, açıklama",e:"Annotations in the margin helped clarify the text."},
+    {w:"antithesis",t:"antitez, karşıtlık",e:"Her argument was the antithesis of his position."},
+    {w:"bibliography",t:"kaynakça",e:"The bibliography lists over fifty sources."},
+    {w:"causality",t:"nedensellik",e:"Causality is difficult to establish from correlation alone."},
+    {w:"citation",t:"alıntı, kaynak gösterme",e:"Proper citation prevents plagiarism."},
+    {w:"coherent",t:"tutarlı, mantıklı",e:"The argument is coherent and well supported."},
+    {w:"concept",t:"kavram",e:"The concept of justice varies across cultures."},
+    {w:"contradiction",t:"çelişki",e:"There is a contradiction in his core argument."},
+    {w:"criterion",t:"kriter, ölçüt",e:"The main criterion for selection is academic merit."},
+    {w:"critique",t:"eleştiri, analiz",e:"A thorough critique was submitted to the editor."},
+    {w:"deduce",t:"sonuç çıkarmak",e:"We can deduce the conclusion from the premises."},
+    {w:"discourse",t:"söylem",e:"The paper contributes to the ongoing discourse."},
+    {w:"dissertation",t:"tez",e:"Her doctoral dissertation was published as a book."},
+    {w:"empirical",t:"ampirik, deneysel",e:"Empirical evidence supports the hypothesis."},
+    {w:"epistemology",t:"epistemoloji, bilgi felsefesi",e:"Epistemology examines the nature of knowledge."},
+    {w:"fallacy",t:"yanılgı, mantık hatası",e:"His reasoning contained a clear logical fallacy."},
+    {w:"framework",t:"çerçeve, kavramsal yapı",e:"The theoretical framework guides the analysis."},
+    {w:"hypothesis",t:"hipotez, varsayım",e:"The hypothesis was tested through controlled experiments."},
+    {w:"implicit",t:"örtük, zımni",e:"The text contains an implicit critique of the system."},
+    {w:"infer",t:"çıkarım yapmak",e:"What can we infer from these statistics?"},
+    {w:"methodology",t:"metodoloji",e:"The research methodology is explained in chapter three."},
+    {w:"nuance",t:"nüans, ince ayrım",e:"The translation must capture subtle nuances."},
+    {w:"objective",t:"nesnel, tarafsız",e:"The study should be objective and free from bias."},
+    {w:"paradigm",t:"paradigma",e:"This research challenges the existing paradigm."},
+    {w:"paraphrase",t:"yeniden ifade etme",e:"Paraphrase the main argument in your own words."},
+    {w:"phenomenon",t:"fenomen, olay",e:"The cultural phenomenon was studied across three societies."},
+    {w:"plagiarism",t:"intihal",e:"Plagiarism is a serious academic offense."},
+    {w:"postulate",t:"aksiyom; ileri sürmek",e:"The theory postulates a direct relationship."},
+    {w:"premise",t:"temel varsayım",e:"The conclusion follows logically from the premise."},
+    {w:"primary source",t:"birincil kaynak",e:"The historian relied heavily on primary sources."},
+    {w:"qualitative",t:"niteliksel",e:"Qualitative research explores subjective experiences."},
+    {w:"quantitative",t:"niceliksel",e:"Quantitative data was analyzed statistically."},
+    {w:"rationale",t:"gerekçe",e:"The rationale for the study is outlined in the introduction."},
+    {w:"rhetoric",t:"retorik, söz sanatı",e:"Political rhetoric often masks the real agenda."},
+    {w:"synthesis",t:"sentez",e:"The conclusion offers a synthesis of the main arguments."},
+    {w:"theoretical",t:"teorik, kuramsal",e:"The paper has a strong theoretical foundation."},
+    {w:"thesis",t:"tez, ana iddia",e:"The thesis statement appears at the end of the introduction."},
+    {w:"variable",t:"değişken",e:"The independent variable was manipulated by the researcher."},
+    {w:"consensus",t:"uzlaşı, genel kanı",e:"There is broad scientific consensus on climate change."},
+    {w:"corollary",t:"sonuç, doğal netice",e:"Reduced funding is a corollary of the budget cuts."},
+    {w:"deductive",t:"tümdengelimli",e:"Deductive reasoning moves from general to specific."},
+    {w:"inductive",t:"tümevarımlı",e:"Inductive reasoning is common in scientific research."},
+    {w:"inference",t:"çıkarım",e:"The inference drawn from the data is clear."},
+    {w:"paradigm shift",t:"paradigma değişimi",e:"The discovery triggered a paradigm shift in physics."},
+    {w:"peer review",t:"hakem değerlendirmesi",e:"The paper passed rigorous peer review."},
+    {w:"refute",t:"çürütmek",e:"The new study refutes the previous findings."},
+    {w:"scrutiny",t:"titiz inceleme",e:"The data was subjected to intense scrutiny."},
+  ],
+  literary:[
+    {w:"allegory",t:"alegori",e:"Orwell's Animal Farm is a political allegory."},
+    {w:"alliteration",t:"aliterasyon",e:"The poem uses alliteration to create rhythm."},
+    {w:"allusion",t:"gönderme, ima",e:"The title is an allusion to Shakespeare's Hamlet."},
+    {w:"ambiguity",t:"çok anlamlılık",e:"The poem's ambiguity invites multiple interpretations."},
+    {w:"antagonist",t:"karşı kahraman",e:"The antagonist represents the forces of corruption."},
+    {w:"archetype",t:"arketip",e:"The hero is an archetype present in all cultures."},
+    {w:"assonance",t:"sesli harf uyumu",e:"The poet used assonance to create a flowing effect."},
+    {w:"catharsis",t:"katarsis",e:"Greek tragedy aims to produce catharsis in the audience."},
+    {w:"characterization",t:"karakter tasviri",e:"The author's characterization of the villain is complex."},
+    {w:"climax",t:"doruk nokta",e:"The climax of the novel occurs in chapter fifteen."},
+    {w:"connotation",t:"çağrışım",e:"The word 'home' has warm connotations."},
+    {w:"denouement",t:"düğüm çözümü",e:"The denouement resolves the central conflict."},
+    {w:"diction",t:"kelime seçimi",e:"The author's diction reflects the Victorian era."},
+    {w:"didactic",t:"öğretici",e:"The fable is didactic in nature."},
+    {w:"elegy",t:"ağıt, mersiye",e:"Tennyson's 'In Memoriam' is a famous elegy."},
+    {w:"epiphany",t:"ani farkındalık",e:"The protagonist has an epiphany in the final chapter."},
+    {w:"euphemism",t:"örtmece söz",e:"'Passed away' is a euphemism for death."},
+    {w:"foreshadowing",t:"ön belirti",e:"The dark clouds foreshadow the coming tragedy."},
+    {w:"genre",t:"edebi tür",e:"The novel belongs to the gothic genre."},
+    {w:"hyperbole",t:"abartma, mübalağa",e:"'I've told you a million times' is hyperbole."},
+    {w:"imagery",t:"imgelem",e:"The poem is rich in visual imagery."},
+    {w:"irony",t:"ironi",e:"Dramatic irony creates tension in the narrative."},
+    {w:"juxtaposition",t:"yan yana koyma",e:"The author uses juxtaposition to highlight the contrast."},
+    {w:"lyricism",t:"lirizm, şiirsellik",e:"The prose is noted for its lyricism."},
+    {w:"metaphor",t:"metafor, istiare",e:"'Life is a journey' is a common metaphor."},
+    {w:"motif",t:"motif, tekrarlayan unsur",e:"Water is a recurring motif throughout the novel."},
+    {w:"narrative",t:"anlatı",e:"The narrative shifts between past and present."},
+    {w:"narrator",t:"anlatıcı",e:"The unreliable narrator keeps the reader guessing."},
+    {w:"omniscient",t:"her şeyi bilen",e:"The omniscient narrator knows every character's thoughts."},
+    {w:"onomatopoeia",t:"ses taklidine dayalı sözcük",e:"'Buzz' and 'crash' are examples of onomatopoeia."},
+    {w:"oxymoron",t:"oksimoron",e:"'Bitter sweet' is a classic oxymoron."},
+    {w:"parable",t:"kıssa",e:"The Prodigal Son is a well-known parable."},
+    {w:"paradox",t:"paradoks",e:"It is a paradox that silence can be deafening."},
+    {w:"protagonist",t:"başkahraman",e:"The protagonist undergoes a significant transformation."},
+    {w:"satire",t:"hiciv",e:"Swift's Gulliver's Travels is a sharp political satire."},
+    {w:"simile",t:"teşbih, benzetme",e:"'As brave as a lion' is a simple simile."},
+    {w:"soliloquy",t:"iç konuşma, monolog",e:"Hamlet's soliloquy explores themes of existence."},
+    {w:"stanza",t:"kıta, bent",e:"The poem consists of four stanzas of four lines each."},
+    {w:"stream of consciousness",t:"bilinç akışı",e:"Woolf used stream of consciousness in Mrs Dalloway."},
+    {w:"subtext",t:"alt metin",e:"The subtext suggests a deeper political message."},
+    {w:"symbolism",t:"sembolizm",e:"The green light symbolizes hope and longing."},
+    {w:"syntax",t:"sözdizimi",e:"The author's unusual syntax creates a dreamlike effect."},
+    {w:"theme",t:"tema, ana fikir",e:"Redemption is the central theme of the novel."},
+    {w:"tone",t:"ton, üslup",e:"The tone of the poem is melancholic."},
+    {w:"tragedy",t:"trajedi",e:"Macbeth is one of Shakespeare's greatest tragedies."},
+    {w:"unreliable narrator",t:"güvenilmez anlatıcı",e:"The unreliable narrator distorts the truth."},
+    {w:"verisimilitude",t:"gerçekçilik, inandırıcılık",e:"The novel's verisimilitude draws readers into the story."},
+    {w:"villanelle",t:"vilanel (şiir formu)",e:"Dylan Thomas's 'Do Not Go Gentle' is a villanelle."},
+    {w:"volta",t:"volta, dönüm noktası (şiirde)",e:"The volta in the sonnet shifts the poem's argument."},
+    {w:"zeitgeist",t:"devrin ruhu",e:"The novel captures the zeitgeist of the 1960s."},
+  ],
+  technical:[
+    {w:"algorithm",t:"algoritma",e:"The sorting algorithm runs in O(n log n) time."},
+    {w:"allocation",t:"tahsis, ayırma",e:"Memory allocation must be managed carefully."},
+    {w:"amplitude",t:"genlik",e:"The signal amplitude was measured in decibels."},
+    {w:"architecture",t:"mimari, yapı",e:"The software architecture follows a microservices model."},
+    {w:"automation",t:"otomasyon",e:"Automation has transformed manufacturing processes."},
+    {w:"bandwidth",t:"bant genişliği",e:"Insufficient bandwidth caused the streaming to buffer."},
+    {w:"binary",t:"ikili sistem",e:"Binary code consists of zeros and ones."},
+    {w:"calibration",t:"kalibrasyon",e:"Regular calibration ensures instrument accuracy."},
+    {w:"capacitor",t:"kondansatör",e:"A capacitor stores electrical charge."},
+    {w:"cipher",t:"şifre, kod",e:"The message was encrypted using a complex cipher."},
+    {w:"circuit",t:"devre",e:"A short circuit caused the power outage."},
+    {w:"compiler",t:"derleyici",e:"The compiler converts source code into machine code."},
+    {w:"compression",t:"sıkıştırma",e:"Data compression reduces file size."},
+    {w:"conductivity",t:"iletkenlik",e:"Copper has high electrical conductivity."},
+    {w:"configuration",t:"yapılandırma",e:"The system configuration was updated manually."},
+    {w:"debug",t:"hata ayıklamak",e:"The engineer spent hours trying to debug the software."},
+    {w:"decibel",t:"desibel",e:"Noise levels above 85 decibels can damage hearing."},
+    {w:"deprecate",t:"kullanımdan kaldırmak",e:"The function was deprecated in version 3.0."},
+    {w:"digital",t:"dijital",e:"Digital signals use discrete values."},
+    {w:"efficiency",t:"verimlilik",e:"The new engine has greater fuel efficiency."},
+    {w:"electrode",t:"elektrot",e:"The electrode was inserted into the solution."},
+    {w:"encryption",t:"şifreleme",e:"End-to-end encryption protects user data."},
+    {w:"firmware",t:"donanım yazılımı",e:"Updating the firmware fixed the connectivity issue."},
+    {w:"frequency",t:"frekans",e:"Radio waves are measured by their frequency."},
+    {w:"gradient",t:"gradyan, eğim",e:"The gradient descent optimizes the model parameters."},
+    {w:"hardware",t:"donanım",e:"The hardware upgrade improved processing speed."},
+    {w:"impedance",t:"empedans, direnç",e:"Impedance mismatch causes signal loss."},
+    {w:"infrastructure",t:"altyapı",e:"Cloud infrastructure enables scalable computing."},
+    {w:"integration",t:"entegrasyon",e:"System integration tests were conducted this week."},
+    {w:"interface",t:"arayüz",e:"The user interface was redesigned for simplicity."},
+    {w:"iteration",t:"iterasyon, tekrarlama",e:"Each iteration of the loop processes one record."},
+    {w:"kernel",t:"çekirdek (işletim sistemi)",e:"The operating system kernel manages hardware resources."},
+    {w:"latency",t:"gecikme",e:"Network latency affects real-time communications."},
+    {w:"modular",t:"modüler",e:"A modular design simplifies maintenance."},
+    {w:"network",t:"ağ",e:"The secure network spans three data centers."},
+    {w:"oscillation",t:"titreşim, salınım",e:"The pendulum demonstrates simple oscillation."},
+    {w:"parameter",t:"parametre",e:"Adjust the parameter to optimize performance."},
+    {w:"protocol",t:"iletişim protokolü",e:"HTTP is the protocol of the World Wide Web."},
+    {w:"redundancy",t:"yedeklilik",e:"Redundancy in systems prevents data loss."},
+    {w:"repository",t:"depo, veri tabanı",e:"The source code is stored in a Git repository."},
+    {w:"simulation",t:"simülasyon",e:"A simulation was run to test the design."},
+    {w:"throughput",t:"verim, iş hacmi",e:"Network throughput was measured in gigabits."},
+    {w:"variable",t:"değişken",e:"The variable stores the user's input value."},
+    {w:"voltage",t:"voltaj, gerilim",e:"High voltage cables must be handled with caution."},
+    {w:"wavelength",t:"dalga boyu",e:"Visible light has a wavelength between 380 and 700 nm."},
+    {w:"syntax",t:"sözdizimi (programlama)",e:"A syntax error prevented the program from compiling."},
+    {w:"scalar",t:"skaler, sayısal değer",e:"A scalar quantity has magnitude but no direction."},
+    {w:"semiconductor",t:"yarı iletken",e:"Silicon is the most common semiconductor material."},
+    {w:"transistor",t:"transistör",e:"A transistor amplifies or switches electronic signals."},
+    {w:"thermal",t:"ısıl, termal",e:"Thermal expansion causes metals to change size."},
+  ]
+};
+</script>
+<script>
+// ===== PHONETICS =====
+const PHONETICS = {
+  "abdomen":"/ˈæbdəmən/","acute":"/əˈkjuːt/","anesthesia":"/ˌænɪsˈθiːziə/",
+  "antibiotic":"/ˌæntɪbaɪˈɒtɪk/","arrhythmia":"/əˈrɪðmiə/","atherosclerosis":"/ˌæθərəʊskləˈrəʊsɪs/",
+  "biopsy":"/ˈbaɪɒpsi/","cardiac":"/ˈkɑːdiæk/","catheter":"/ˈkæθɪtər/",
+  "chemotherapy":"/ˌkiːməʊˈθerəpi/","cirrhosis":"/sɪˈrəʊsɪs/","coagulation":"/kəʊˌæɡjʊˈleɪʃən/",
+  "comorbidity":"/kəʊmɔːˈbɪdɪti/","contraindication":"/ˌkɒntrəˌɪndɪˈkeɪʃən/",
+  "defibrillation":"/diːˌfɪbrɪˈleɪʃən/","dialysis":"/daɪˈæləsɪs/","diagnosis":"/ˌdaɪəɡˈnəʊsɪs/",
+  "edema":"/ɪˈdiːmə/","embolism":"/ˈembəlɪzəm/","endoscopy":"/enˈdɒskəpi/",
+  "enzyme":"/ˈenzaɪm/","etiology":"/ˌiːtiˈɒlədʒi/","fracture":"/ˈfræktʃər/",
+  "hemorrhage":"/ˈhemərɪdʒ/","hypertension":"/ˌhaɪpəˈtenʃən/","immune":"/ɪˈmjuːn/",
+  "inflammation":"/ˌɪnfləˈmeɪʃən/","intravenous":"/ˌɪntrəˈviːnəs/",
+  "lesion":"/ˈliːʒən/","malignant":"/məˈlɪɡnənt/","metastasis":"/mɪˈtæstəsɪs/",
+  "necrosis":"/nɪˈkrəʊsɪs/","neurological":"/ˌnjʊərəˈlɒdʒɪkəl/","oncology":"/ɒŋˈkɒlədʒi/",
+  "palliative":"/ˈpæliətɪv/","pathogen":"/ˈpæθədʒən/","pharmacology":"/ˌfɑːməˈkɒlədʒi/",
+  "prognosis":"/prɒɡˈnəʊsɪs/","prophylaxis":"/ˌprɒfɪˈlæksɪs/","pulmonary":"/ˈpʌlmənəri/",
+  "remission":"/rɪˈmɪʃən/","sedative":"/ˈsedətɪv/","sepsis":"/ˈsepsɪs/",
+  "sterile":"/ˈsteraɪl/","suture":"/ˈsuːtʃər/","symptom":"/ˈsɪmptəm/",
+  "syndrome":"/ˈsɪndrəʊm/","tachycardia":"/ˌtækɪˈkɑːdiə/","thrombosis":"/θrɒmˈbəʊsɪs/",
+  "trauma":"/ˈtrɔːmə/","ulcer":"/ˈʌlsər/","vascular":"/ˈvæskjʊlər/",
+  "venous":"/ˈviːnəs/","vital signs":"/ˈvaɪtəl saɪnz/","antibody":"/ˈæntɪbɒdi/",
+  "congenital":"/kənˈdʒenɪtəl/","aneurysm":"/ˈænjʊrɪzəm/","anesthesia":"/ˌænɪsˈθiːziə/",
+  "acquittal":"/əˈkwɪtəl/","adjudication":"/əˌdʒuːdɪˈkeɪʃən/","affidavit":"/ˌæfɪˈdeɪvɪt/",
+  "allegation":"/ˌælɪˈɡeɪʃən/","arbitration":"/ˌɑːbɪˈtreɪʃən/","arraignment":"/əˈreɪnmənt/",
+  "statute":"/ˈstætʃuːt/","subpoena":"/səˈpiːnə/","testimony":"/ˈtestɪməni/",
+  "tort":"/tɔːt/","verdict":"/ˈvɜːdɪkt/","warrant":"/ˈwɒrənt/",
+  "jurisdiction":"/ˌdʒʊərɪsˈdɪkʃən/","litigation":"/ˌlɪtɪˈɡeɪʃən/",
+  "plaintiff":"/ˈpleɪntɪf/","defendant":"/dɪˈfendənt/","indictment":"/ɪnˈdaɪtmənt/",
+  "injunction":"/ɪnˈdʒʌŋkʃən/","jurisprudence":"/ˌdʒʊərɪsˈpruːdəns/",
+  "culpable":"/ˈkʌlpəbəl/","habeas corpus":"/ˌheɪbiəs ˈkɔːpəs/",
+  "inadmissible":"/ˌɪnədˈmɪsɪbəl/","incarceration":"/ɪnˌkɑːsəˈreɪʃən/",
+  "precedent":"/ˈpresɪdənt/","probate":"/ˈprəʊbeɪt/","recidivism":"/rɪˈsɪdɪvɪzəm/",
+  "restitution":"/ˌrestɪˈtjuːʃən/","sovereignty":"/ˈsɒvrənti/",
+  "ambassador":"/æmˈbæsədər/","annexation":"/ˌænekˈseɪʃən/","asylum":"/əˈsaɪləm/",
+  "bilateral":"/baɪˈlætərəl/","communiqué":"/kəˈmjuːnɪkeɪ/","consulate":"/ˈkɒnsjʊlɪt/",
+  "détente":"/deɪˈtɒnt/","diplomacy":"/dɪˈpləʊməsi/","embargo":"/ɪmˈbɑːɡəʊ/",
+  "envoy":"/ˈenvɔɪ/","extradition":"/ˌekstrəˈdɪʃən/","geopolitics":"/ˌdʒiːəʊˈpɒlɪtɪks/",
+  "multilateral":"/ˌmʌltiˈlætərəl/","neutrality":"/njuːˈtræləti/","protocol":"/ˈprəʊtəkɒl/",
+  "ratification":"/ˌrætɪfɪˈkeɪʃən/","sanctions":"/ˈsæŋkʃənz/","treaty":"/ˈtriːti/","veto":"/ˈviːtəʊ/",
+  "abstract":"/ˈæbstrækt/","bibliography":"/ˌbɪbliˈɒɡrəfi/","citation":"/saɪˈteɪʃən/",
+  "empirical":"/ɪmˈpɪrɪkəl/","epistemology":"/ɪˌpɪstɪˈmɒlədʒi/","hypothesis":"/haɪˈpɒθɪsɪs/",
+  "methodology":"/ˌmeθəˈdɒlədʒi/","nuance":"/ˈnjuːɑːns/","paradigm":"/ˈpærədaɪm/",
+  "peer review":"/pɪər rɪˈvjuː/","plagiarism":"/ˈpleɪdʒərɪzəm/","rhetoric":"/ˈretərɪk/",
+  "synthesis":"/ˈsɪnθɪsɪs/","theoretical":"/ˌθɪəˈretɪkəl/","thesis":"/ˈθiːsɪs/",
+  "consensus":"/kənˈsensəs/","corollary":"/kəˈrɒləri/","inference":"/ˈɪnfərəns/",
+  "scrutiny":"/ˈskruːtɪni/","refute":"/rɪˈfjuːt/","paradigm shift":"/ˈpærədaɪm ʃɪft/",
+  "allegory":"/ˈæləɡəri/","alliteration":"/əˌlɪtəˈreɪʃən/","allusion":"/əˈluːʒən/",
+  "ambiguity":"/ˌæmbɪˈɡjuːɪti/","archetype":"/ˈɑːkɪtaɪp/","catharsis":"/kəˈθɑːsɪs/",
+  "denouement":"/deɪˈnuːmɒŋ/","didactic":"/daɪˈdæktɪk/","elegy":"/ˈelɪdʒi/",
+  "epiphany":"/ɪˈpɪfəni/","euphemism":"/ˈjuːfɪmɪzəm/","hyperbole":"/haɪˈpɜːbəli/",
+  "juxtaposition":"/ˌdʒʌkstəpəˈzɪʃən/","metaphor":"/ˈmetəfər/","onomatopoeia":"/ˌɒnəˌmætəˈpiːə/",
+  "oxymoron":"/ˌɒksɪˈmɔːrɒn/","protagonist":"/prəˈtæɡənɪst/","satire":"/ˈsætaɪər/",
+  "soliloquy":"/səˈlɪləkwi/","verisimilitude":"/ˌverɪsɪˈmɪlɪtjuːd/","villanelle":"/ˌvɪləˈnel/",
+  "algorithm":"/ˈælɡərɪðəm/","calibration":"/ˌkælɪˈbreɪʃən/","capacitor":"/kəˈpæsɪtər/",
+  "catalyst":"/ˈkætəlɪst/","conductivity":"/ˌkɒndʌkˈtɪvɪti/","diagnostics":"/ˌdaɪəɡˈnɒstɪks/",
+  "electrode":"/ɪˈlektrəʊd/","electromagnetic":"/ɪˌlektrəʊmæɡˈnetɪk/","oscillation":"/ˌɒsɪˈleɪʃən/",
+  "polymer":"/ˈpɒlɪmər/","prototype":"/ˈprəʊtətaɪp/","semiconductor":"/ˌsemɪkənˈdʌktər/",
+  "simulation":"/ˌsɪmjʊˈleɪʃən/","thermodynamics":"/ˌθɜːməʊdaɪˈnæmɪks/","torque":"/tɔːk/",
+  "transistor":"/trænˈzɪstər/","wavelength":"/ˈweɪvleŋθ/","viscosity":"/vɪˈskɒsɪti/"
+};
+
+// ===== STATE =====
+const DEFAULT_CAT_TARGETS = {medical:100,legal:80,diplomatic:50,academic:50,literary:50,technical:50};
+const CAT_LABELS = {medical:'🩺 Tıp',legal:'⚖️ Hukuk',diplomatic:'🌐 Diplomatik',academic:'🎓 Akademik',literary:'📖 Edebi',technical:'⚙️ Teknik'};
+const CAT_COLORS = {medical:'#7eb8c9',legal:'#c8a96e',diplomatic:'#9b7ec8',academic:'#6ec89b',literary:'#c87e6e',technical:'#c8c06e'};
+const SRS_INTERVALS = [1,3,7,30]; // days
+
+let state = {
+  skills:{vocab:0,listen:0,trans:0,interp:0,write:0},
+  wordStatuses:{},
+  srsCards:{},      // key -> {level:0-4, nextReview: timestamp, lastReviewed: timestamp}
+  srsDoneToday:0,
+  analysisNotes:{},
+  vocab:[],
+  logs:[],
+  goals:[],
+  streak:0,
+  lastStudyDate:null,
+  weeklyWordGoal:300,
+  catTargets:{...DEFAULT_CAT_TARGETS},
+  streakWarnEnabled:true,
+  currentCat:'medical',
+  currentSession:0,
+  quizDeck:[],quizIndex:0,quizFlipped:false,
+  dailyWords:{},
+};
+
+function loadState(){
+  try{const s=localStorage.getItem('engHub4');if(s){const p=JSON.parse(s);state={...state,...p};if(!state.catTargets)state.catTargets={...DEFAULT_CAT_TARGETS};if(!state.srsCards)state.srsCards={};}}catch(e){}
+}
+function saveState(){try{localStorage.setItem('engHub4',JSON.stringify(state));}catch(e){}}
+
+// ===== TTS =====
+let ttsMode = 'google'; // 'google' | 'browser'
+let isSpeaking = false;
+
+function speak(text, onEnd){
+  if(isSpeaking){window.speechSynthesis && window.speechSynthesis.cancel(); isSpeaking=false;}
+  if(ttsMode==='google'){
+    speakGoogle(text, onEnd);
+  } else {
+    speakBrowser(text, onEnd);
+  }
+}
+
+function speakGoogle(text, onEnd){
+  const encoded = encodeURIComponent(text);
+  const url = `https://translate.google.com/translate_tts?ie=UTF-8&q=${encoded}&tl=en-GB&client=tw-ob`;
+  const audio = new Audio(url);
+  isSpeaking = true;
+  audio.onended = ()=>{isSpeaking=false; onEnd&&onEnd();};
+  audio.onerror = ()=>{
+    isSpeaking=false;
+    // Fallback to browser TTS silently
+    speakBrowser(text, onEnd);
+  };
+  audio.play().catch(()=>{ speakBrowser(text, onEnd); });
+}
+
+function speakBrowser(text, onEnd){
+  if(!window.speechSynthesis){onEnd&&onEnd();return;}
+  const utt = new SpeechSynthesisUtterance(text);
+  utt.lang='en-GB'; utt.rate=0.85;
+  // Try to get British voice
+  const voices = window.speechSynthesis.getVoices();
+  const brit = voices.find(v=>v.lang==='en-GB')||voices.find(v=>v.lang.startsWith('en'));
+  if(brit) utt.voice=brit;
+  isSpeaking=true;
+  utt.onend=()=>{isSpeaking=false;onEnd&&onEnd();};
+  utt.onerror=()=>{isSpeaking=false;onEnd&&onEnd();};
+  window.speechSynthesis.speak(utt);
+}
+
+function toggleTtsMode(){
+  ttsMode = ttsMode==='google' ? 'browser' : 'google';
+  const btn = document.getElementById('tts-mode-btn');
+  if(btn) btn.textContent = ttsMode==='google' ? '🔊 Google TTS' : '🔊 Browser';
+}
+
+// ===== FLIP CARD MODAL =====
+let flipWords = [];
+let flipIdx = 0;
+
+function openFlipCard(globalIdx){
+  const cat=state.currentCat, sess=state.currentSession;
+  flipWords = WORD_DB[cat].slice(sess*50,(sess+1)*50);
+  flipIdx = globalIdx - sess*50;
+  renderFlipModal();
+}
+
+function renderFlipModal(){
+  const existing=document.getElementById('flip-modal');
+  if(existing)existing.remove();
+  const w=flipWords[flipIdx];
+  if(!w)return;
+  const cat=state.currentCat;
+  const phonetic=PHONETICS[w.w.toLowerCase()]||PHONETICS[w.w]||'';
+
+  const modal=document.createElement('div');
+  modal.id='flip-modal';
+  modal.className='modal-overlay';
+  modal.innerHTML=`
+    <div style="position:relative">
+      <div class="modal-top">
+        <button class="tts-src-toggle" id="tts-mode-btn" onclick="toggleTtsMode()">${ttsMode==='google'?'🔊 Google TTS':'🔊 Browser'}</button>
+        <button class="modal-close-btn" onclick="closeFlipModal()">✕ Kapat</button>
+      </div>
+      <div class="flip-scene" id="flip-scene" onclick="toggleFlip()">
+        <div class="flip-card" id="flip-card">
+          <div class="flip-front">
+            <div class="flip-cat-lbl">${CAT_LABELS[cat]}</div>
+            <div class="flip-word">${w.w}</div>
+            ${phonetic?`<div class="flip-phonetic">${phonetic}</div>`:''}
+            <div class="flip-hint">kartı çevir →</div>
+            <div class="flip-num">${flipIdx+1} / ${flipWords.length}</div>
+          </div>
+          <div class="flip-back">
+            <div class="flip-meaning">${w.t}</div>
+            <div class="flip-example-text">"${w.e||''}"</div>
+            ${phonetic?`<div class="flip-phonetic" style="margin-top:10px">${phonetic}</div>`:''}
+            <div class="flip-num">${flipIdx+1} / ${flipWords.length}</div>
+          </div>
+        </div>
+      </div>
+      <div class="modal-controls">
+        <button class="nav-btn" onclick="flipNav(-1)">← Önceki</button>
+        <button class="tts-btn" id="flip-tts-word" onclick="flipSpeak('word')">🔊 Kelime</button>
+        <button class="tts-btn" id="flip-tts-sent" onclick="flipSpeak('sent')">🔊 Cümle</button>
+        <button class="tts-btn" id="flip-tts-both" onclick="flipSpeak('both')">🔊 İkisi</button>
+        <button class="nav-btn" onclick="flipNav(1)">Sonraki →</button>
+      </div>
+    </div>`;
+  document.body.appendChild(modal);
+  modal.addEventListener('click',e=>{if(e.target===modal)closeFlipModal();});
+  document._flipKey=e=>{
+    if(e.key==='ArrowRight'||e.key==='ArrowDown')flipNav(1);
+    else if(e.key==='ArrowLeft'||e.key==='ArrowUp')flipNav(-1);
+    else if(e.key===' '){e.preventDefault();toggleFlip();}
+    else if(e.key==='Escape')closeFlipModal();
+    else if(e.key==='s')flipSpeak('word');
+    else if(e.key==='Enter')flipSpeak('both');
+  };
+  document.addEventListener('keydown',document._flipKey);
+}
+
+function toggleFlip(){const c=document.getElementById('flip-card');if(c)c.classList.toggle('flipped');}
+
+function flipNav(dir){
+  if(isSpeaking){window.speechSynthesis&&window.speechSynthesis.cancel();isSpeaking=false;}
+  flipIdx=(flipIdx+dir+flipWords.length)%flipWords.length;
+  const c=document.getElementById('flip-card');
+  if(c)c.classList.remove('flipped');
+  setTimeout(()=>renderFlipModal(),40);
+}
+
+function flipSpeak(mode){
+  const w=flipWords[flipIdx];if(!w)return;
+  const setBtnState=(id,active)=>{const b=document.getElementById(id);if(b){b.classList.toggle('speaking',active);}};
+  if(mode==='word'){
+    setBtnState('flip-tts-word',true);
+    speak(w.w,()=>setBtnState('flip-tts-word',false));
+  } else if(mode==='sent'){
+    setBtnState('flip-tts-sent',true);
+    speak(w.e||w.w,()=>setBtnState('flip-tts-sent',false));
+  } else {
+    setBtnState('flip-tts-both',true);
+    speak(w.w,()=>{
+      setTimeout(()=>speak(w.e||'',()=>setBtnState('flip-tts-both',false)),400);
+    });
+  }
+}
+
+function closeFlipModal(){
+  if(isSpeaking){window.speechSynthesis&&window.speechSynthesis.cancel();isSpeaking=false;}
+  document.removeEventListener('keydown',document._flipKey);
+  const m=document.getElementById('flip-modal');if(m)m.remove();
+}
+
+function quickSpeak(word){speak(word,null);}
+
+
+// ===== INIT =====
+function initDate(){
+  const n=new Date();
+  document.getElementById('dayNum').textContent=n.getDate();
+  document.getElementById('dateStr').textContent=n.toLocaleDateString('tr-TR',{month:'long',year:'numeric',weekday:'long'});
+}
+
+function switchTab(name,btn){
+  document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
+  document.getElementById('panel-'+name).classList.add('active');
+  btn.classList.add('active');
+  if(name==='dashboard')updateDashboard();
+  if(name==='wordlists'){renderSessionBtns();renderWordTable();renderAnalysis();}
+  if(name==='srs')renderSRS();
+  if(name==='quiz')initQuiz();
+  if(name==='goals')renderGoalsPanel();
+  if(name==='study')renderStudyLog();
+  if(name==='vocab')renderVocab();
+}
+
+// ===== WORD LISTS =====
+function selectCat(cat,btn){
+  state.currentCat=cat;state.currentSession=0;
+  document.querySelectorAll('.wl-cat-btn').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  renderSessionBtns();renderWordTable();renderAnalysis();
+}
+
+function renderSessionBtns(){
+  const cat=state.currentCat;
+  const total=Math.ceil(WORD_DB[cat].length/50);
+  const el=document.getElementById('wl-session-btns');el.innerHTML='';
+  for(let i=0;i<total;i++){
+    const words=WORD_DB[cat].slice(i*50,(i+1)*50);
+    const known=words.filter((_,j)=>state.wordStatuses[cat+'_'+(i*50+j)]==='known').length;
+    const unk=words.filter((_,j)=>state.wordStatuses[cat+'_'+(i*50+j)]==='unknown').length;
+    const btn=document.createElement('button');
+    btn.className='btn btn-sm '+(state.currentSession===i?'btn-primary':'btn-ghost');
+    btn.textContent='Set '+(i+1)+' (✓'+known+' −'+unk+')';
+    btn.onclick=(si=>()=>{state.currentSession=si;renderSessionBtns();renderWordTable();renderAnalysis();})(i);
+    el.appendChild(btn);
+  }
+}
+
+function renderWordTable(){
+  const cat=state.currentCat,sess=state.currentSession;
+  const words=WORD_DB[cat].slice(sess*50,(sess+1)*50);
+  document.getElementById('wl-session-title').textContent=CAT_LABELS[cat]+' — Set '+(sess+1);
+  const known=words.filter((_,i)=>state.wordStatuses[cat+'_'+(sess*50+i)]==='known').length;
+  const unsure=words.filter((_,i)=>state.wordStatuses[cat+'_'+(sess*50+i)]==='unsure').length;
+  const unknown=words.filter((_,i)=>state.wordStatuses[cat+'_'+(sess*50+i)]==='unknown').length;
+  const pct=Math.round(((known+unsure+unknown)/words.length)*100);
+  document.getElementById('wl-session-info').innerHTML=
+    `<strong>${words.length}</strong> kelime &nbsp;·&nbsp; <span style="color:var(--success)">✓${known}</span> &nbsp;<span style="color:var(--accent)">○${unsure}</span> &nbsp;<span style="color:var(--danger)">−${unknown}</span>`;
+  document.getElementById('wl-prog-fill').style.width=pct+'%';
+
+  let html=`<table class="word-table"><thead><tr>
+    <th>#</th><th>Kelime <span style="font-size:0.58rem;color:var(--muted);font-weight:400">(tıkla→kart)</span></th>
+    <th>Fonetik</th><th>Türkçe</th><th>Örnek</th><th>Durum</th>
+  </tr></thead><tbody>`;
+  words.forEach((w,i)=>{
+    const key=cat+'_'+(sess*50+i);
+    const st=state.wordStatuses[key]||'';
+    const rc=st==='known'?'s-known':st==='unknown'?'s-unknown':st==='unsure'?'s-unsure':'';
+    const wc=st==='known'?'color:var(--success)':st==='unknown'?'color:var(--danger)':st==='unsure'?'color:var(--accent)':'';
+    const phonetic=PHONETICS[w.w.toLowerCase()]||PHONETICS[w.w]||'—';
+    const globalIdx=sess*50+i;
+    html+=`<tr class="${rc}">
+      <td class="wt-num">${globalIdx+1}</td>
+      <td><div class="wt-word-cell" style="${wc}" onclick="openFlipCard(${globalIdx})">${w.w} <span style="font-size:0.65rem;opacity:0.35">↗</span></div></td>
+      <td><div class="wt-phonetic">${phonetic}</div></td>
+      <td style="font-size:0.83rem">${w.t}</td>
+      <td><div class="wt-example">${w.e||''}</div></td>
+      <td><div class="status-btns">
+        <button class="status-btn${st==='known'?' s-known':''}" title="Ezberledim" onclick="setWStatus('${key}','known')">✓</button>
+        <button class="status-btn${st==='unsure'?' s-unsure':''}" title="Kararsız" onclick="setWStatus('${key}','unsure')">○</button>
+        <button class="status-btn${st==='unknown'?' s-unknown':''}" title="Bilmiyorum" onclick="setWStatus('${key}','unknown')">−</button>
+        <button class="status-btn" title="Sesli oku" onclick="quickSpeak('${w.w.replace(/'/g,"\\'")}')">🔊</button>
+      </div></td>
+    </tr>`;
+  });
+  html+='</tbody></table>';
+  document.getElementById('wl-table-wrap').innerHTML=html;
+}
+
+function setWStatus(key,status){
+  const prev=state.wordStatuses[key];
+  if(prev===status){delete state.wordStatuses[key];}
+  else{
+    state.wordStatuses[key]=status;
+    // Auto-add to SRS when marked known for the first time
+    if(status==='known'&&!state.srsCards[key]){
+      state.srsCards[key]={level:0,nextReview:Date.now(),lastReviewed:null};
+    }
+  }
+  // Track daily known words
+  if(status==='known'){
+    const cat=key.split('_')[0];
+    const idx=parseInt(key.split('_')[1]);
+    const word=WORD_DB[cat]&&WORD_DB[cat][idx];
+    if(word) recordDailyWord(key,word);
+    renderCalendar();
+  }
+  saveState();renderWordTable();renderSessionBtns();renderAnalysis();
+  updateSRSDot();
+  // Count today's analyzed words and maybe show popup
+  const todayKey=getTodayKey();
+  const todayCount=(state.dailyWords&&state.dailyWords[todayKey])?state.dailyWords[todayKey].length:0;
+  maybeShowStreakPopup(todayCount);
+}
+
+function renderAnalysis(){
+  const cat=state.currentCat,sess=state.currentSession;
+  const words=WORD_DB[cat].slice(sess*50,(sess+1)*50);
+  const known=words.filter((_,i)=>state.wordStatuses[cat+'_'+(sess*50+i)]==='known').length;
+  const unsure=words.filter((_,i)=>state.wordStatuses[cat+'_'+(sess*50+i)]==='unsure').length;
+  const unknown=words.filter((_,i)=>state.wordStatuses[cat+'_'+(sess*50+i)]==='unknown').length;
+  const marked=known+unsure+unknown;
+  const card=document.getElementById('wl-analysis-card');
+  if(!marked){card.style.display='none';return;}
+  card.style.display='block';
+  const pct=Math.round((known/Math.max(1,marked))*100);
+  const unknownWords=words.filter((_,i)=>state.wordStatuses[cat+'_'+(sess*50+i)]==='unknown');
+  const unsureWords=words.filter((_,i)=>state.wordStatuses[cat+'_'+(sess*50+i)]==='unsure');
+  const noteKey=cat+'_'+sess;
+  const savedNote=state.analysisNotes[noteKey]||'';
+  document.getElementById('wl-analysis-content').innerHTML=`
+    <div class="analysis-box">
+      <div class="analysis-stats">
+        <div class="ast"><div class="ast-num" style="color:var(--success)">${known}</div><div class="ast-lbl">Ezberlendi</div></div>
+        <div class="ast"><div class="ast-num" style="color:var(--accent)">${unsure}</div><div class="ast-lbl">Kararsız</div></div>
+        <div class="ast"><div class="ast-num" style="color:var(--danger)">${unknown}</div><div class="ast-lbl">Bilinmiyor</div></div>
+        <div class="ast"><div class="ast-num" style="color:var(--accent2)">${pct}%</div><div class="ast-lbl">Başarı</div></div>
+      </div>
+      ${unknownWords.length?'<div style="margin-bottom:10px">'+unknownWords.map(w=>`<span class="unknown-word-chip">${w.w}</span>`).join('')+'</div>':''}
+      ${unsureWords.length?`<div style="margin-bottom:10px;font-size:0.72rem;color:var(--muted)">Kararsız: `+unsureWords.map(w=>`<span style="display:inline-block;margin:2px 3px;padding:3px 7px;background:rgba(200,169,110,0.12);border:1px solid rgba(200,169,110,0.25);border-radius:4px;font-family:'DM Mono',monospace;font-size:0.7rem;color:var(--accent)">${w.w}</span>`).join('')+'</div>':''}
+      <label>Notlarım</label>
+      <textarea id="analysis-note" style="margin-top:4px" placeholder="Bu sette zorlandığın kelimeler, bağlantılar...">${savedNote}</textarea>
+      <button class="btn btn-primary btn-sm" style="margin-top:6px" onclick="saveNote('${noteKey}')">Kaydet</button>
+    </div>`;
+}
+
+function saveNote(key){
+  const v=document.getElementById('analysis-note').value;
+  state.analysisNotes[key]=v;saveState();
+  const btn=event.target;btn.textContent='✓ Kaydedildi';setTimeout(()=>btn.textContent='Kaydet',1500);
+}
+
+// ===== SPACED REPETITION =====
+function getDueCards(){
+  const now=Date.now();
+  return Object.entries(state.srsCards)
+    .filter(([k,v])=>v.nextReview<=now)
+    .map(([key,data])=>{
+      const parts=key.split('_');
+      const cat=parts[0];
+      const idx=parseInt(parts[1]);
+      const word=WORD_DB[cat]?.[idx];
+      if(!word)return null;
+      return {key,cat,idx,word,data};
+    }).filter(Boolean);
+}
+
+function renderSRS(){
+  const due=getDueCards();
+  const total=Object.keys(state.srsCards).length;
+  document.getElementById('srs-due-count').textContent=due.length;
+  document.getElementById('srs-total-count').textContent=total;
+  document.getElementById('srs-done-count').textContent=state.srsDoneToday||0;
+
+  const area=document.getElementById('srs-session-area');
+  if(!due.length){
+    area.innerHTML=`<div class="card" style="text-align:center;padding:32px">
+      <div style="font-size:2.5rem;margin-bottom:12px">🎉</div>
+      <div style="font-family:'Playfair Display',serif;font-size:1.3rem;font-weight:700;color:var(--success);margin-bottom:8px">Bugünlük tamamlandı!</div>
+      <div style="font-size:0.82rem;color:var(--muted)">Tüm tekrar kartları güncellendi. Yarın yeni kartlar seni bekliyor.</div>
+    </div>`;
+  } else {
+    const item=due[0];
+    const phonetic=PHONETICS[item.word.w.toLowerCase()]||PHONETICS[item.word.w]||'';
+    const nextDays=SRS_INTERVALS;
+    area.innerHTML=`<div class="card">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;flex-wrap:wrap;gap:8px">
+        <div class="section-title" style="margin:0"><span class="dot" style="background:var(--danger)"></span>Tekrar Zamanı — <span style="color:var(--danger)">${due.length}</span> kart bekliyor</div>
+        <div style="display:flex;gap:6px">
+          <button class="tts-src-toggle" id="tts-mode-btn-srs" onclick="toggleTtsMode()">${ttsMode==='google'?'🔊 Google TTS':'🔊 Browser'}</button>
+          <button class="tts-btn btn-sm" onclick="speak('${item.word.w.replace(/'/g,"\\'")}',null)" style="font-size:0.75rem;padding:5px 10px">🔊 Dinle</button>
+        </div>
+      </div>
+      <div class="srs-card" onclick="this.querySelector('.srs-back').style.display=this.querySelector('.srs-back').style.display==='none'?'block':'none'">
+        <div class="srs-word">${item.word.w}</div>
+        ${phonetic?`<div style="font-family:'DM Mono',monospace;font-size:0.85rem;color:var(--accent3);margin-top:4px">${phonetic}</div>`:''}
+        <div style="font-size:0.75rem;color:var(--muted);margin-top:8px">Türkçesini hatırlıyor musun? Tıkla →</div>
+        <div class="srs-back" style="display:none;margin-top:14px;padding-top:14px;border-top:1px solid var(--border)">
+          <div style="font-family:'Playfair Display',serif;font-size:1.3rem;font-weight:700;color:var(--text);margin-bottom:6px">${item.word.t}</div>
+          <div style="font-size:0.8rem;color:var(--muted);font-style:italic">"${item.word.e||''}"</div>
+        </div>
+      </div>
+      <div style="font-size:0.75rem;color:var(--muted);text-align:center;margin-bottom:10px">Ne kadar kolaydı?</div>
+      <div class="srs-difficulty-btns">
+        <button class="btn btn-danger" onclick="rateSRS('${item.key}',0)">😰 Hiç bilmedim<div style="font-size:0.65rem;opacity:0.7;margin-top:2px">1 gün sonra</div></button>
+        <button class="btn btn-ghost" style="border-color:var(--accent)" onclick="rateSRS('${item.key}',1)">😅 Zor<div style="font-size:0.65rem;opacity:0.7;margin-top:2px">3 gün sonra</div></button>
+        <button class="btn btn-ghost" style="border-color:var(--accent2)" onclick="rateSRS('${item.key}',2)">🙂 Orta<div style="font-size:0.65rem;opacity:0.7;margin-top:2px">7 gün sonra</div></button>
+        <button class="btn btn-ghost" style="border-color:var(--success);color:var(--success)" onclick="rateSRS('${item.key}',3)">😎 Kolay!<div style="font-size:0.65rem;opacity:0.7;margin-top:2px">30 gün sonra</div></button>
+      </div>
+      <div style="font-size:0.7rem;color:var(--muted);text-align:center;margin-top:10px">Seviye: ${item.data.level}/4 &nbsp;·&nbsp; ${CAT_LABELS[item.cat]}</div>
+    </div>`;
+  }
+
+  // All cards list
+  renderSRSList();
+}
+
+function rateSRS(key,rating){
+  const card=state.srsCards[key];if(!card)return;
+  const days=SRS_INTERVALS[Math.min(rating,3)];
+  card.level=Math.max(0,Math.min(4,rating));
+  card.nextReview=Date.now()+days*24*60*60*1000;
+  card.lastReviewed=Date.now();
+  state.srsDoneToday=(state.srsDoneToday||0)+1;
+  saveState();renderSRS();updateSRSDot();
+}
+
+function renderSRSList(){
+  const el=document.getElementById('srs-all-cards');
+  const entries=Object.entries(state.srsCards);
+  if(!entries.length){el.innerHTML='<div class="empty-state" style="padding:16px"><span class="emoji">🃏</span>✓ işaretlediğin kelimeler otomatik eklenir</div>';return;}
+  const now=Date.now();
+  const sorted=entries.map(([key,data])=>{
+    const parts=key.split('_');const cat=parts[0];const idx=parseInt(parts[1]);
+    const word=WORD_DB[cat]?.[idx];if(!word)return null;
+    return {key,cat,word,data,due:data.nextReview<=now};
+  }).filter(Boolean).sort((a,b)=>a.data.nextReview-b.data.nextReview);
+
+  el.innerHTML=sorted.map(item=>{
+    const daysUntil=Math.ceil((item.data.nextReview-now)/(24*60*60*1000));
+    const dueStr=item.due?'<span class="srs-due-badge">⏰ Bugün</span>':
+      daysUntil===1?'<span style="font-size:0.7rem;color:var(--accent)">yarın</span>':
+      `<span style="font-size:0.7rem;color:var(--muted)">${daysUntil}g sonra</span>`;
+    return `<div style="display:flex;align-items:center;gap:10px;padding:8px 10px;border-bottom:1px solid rgba(42,42,48,0.4)">
+      <div style="flex:1">
+        <span style="font-family:'Playfair Display',serif;font-weight:700;color:var(--accent)">${item.word.w}</span>
+        <span style="font-size:0.78rem;color:var(--muted);margin-left:8px">${item.word.t}</span>
+      </div>
+      <div style="font-family:'DM Mono',monospace;font-size:0.65rem;color:var(--muted)">Lv${item.data.level}</div>
+      ${dueStr}
+      <button class="btn-danger" style="padding:3px 7px;font-size:0.65rem;border-radius:5px;border:1px solid var(--danger);background:transparent;color:var(--danger);cursor:pointer" onclick="removeSRS('${item.key}')">✕</button>
+    </div>`;
+  }).join('');
+}
+
+function removeSRS(key){delete state.srsCards[key];saveState();renderSRS();updateSRSDot();}
+
+function updateSRSDot(){
+  const due=getDueCards().length;
+  const dot=document.getElementById('srs-due-dot');
+  if(dot)dot.style.display=due>0?'inline-block':'none';
+  const statEl=document.getElementById('stat-srs');
+  if(statEl)statEl.textContent=due;
+}
+
+// ===== DASHBOARD =====
+function updateDashboard(){
+  const known=Object.values(state.wordStatuses).filter(v=>v==='known').length;
+  const unknown=Object.values(state.wordStatuses).filter(v=>v==='unknown').length;
+  document.getElementById('stat-words').textContent=state.vocab.length;
+  document.getElementById('stat-known').textContent=known;
+  document.getElementById('stat-unknown').textContent=unknown;
+  document.getElementById('stat-hours').textContent=state.logs.reduce((s,l)=>s+(l.mins||0),0);
+  document.getElementById('streak-num').textContent=state.streak||0;
+  const msg=document.getElementById('streak-msg');
+  const todayStudied=state.lastStudyDate===new Date().toDateString();
+  if(state.streakWarnEnabled&&!todayStudied&&state.streak>0){
+    msg.innerHTML=`<span class="streak-warn">⚠️ Bugün henüz çalışmadın! Streakini korumak için çalış.</span>`;
+  } else if(state.streak>=7){
+    msg.textContent='🏆 Muhteşem! '+state.streak+' gün üst üste!';
+  } else {
+    msg.textContent='Her gün çalışmaya devam et!';
+  }
+  ['vocab','listen','trans','interp','write'].forEach(k=>{
+    const v=state.skills[k]||0;
+    document.getElementById('p-'+k).textContent=v+'%';
+    document.getElementById('pf-'+k).style.width=v+'%';
+  });
+  updateSRSDot();
+  renderWordTarget();
+  renderCalendar();
+  renderRecentLog();
+}
+
+function renderRecentLog(){
+  const el=document.getElementById('recent-log');
+  if(!state.logs.length){el.innerHTML='<div class="empty-state" style="padding:16px"><span class="emoji">📭</span>Henüz kayıt yok</div>';return;}
+  const icons={vocab:'📚',listen:'🎧',trans:'✍️',interp:'🎙️',write:'📝',read:'📖'};
+  el.innerHTML=state.logs.slice(-5).reverse().map(l=>`
+    <div class="log-item">
+      <div class="log-icon" style="background:rgba(200,169,110,0.1)">${icons[l.type]||'📋'}</div>
+      <div><div style="font-size:0.85rem;font-weight:500">${l.topic}</div><div style="font-size:0.7rem;color:var(--muted)">${l.mins} dk · ${l.date}</div></div>
+    </div>`).join('');
+}
+
+// ===== WORD TARGET =====
+function renderWordTarget(){
+  const goal=state.weeklyWordGoal||300;
+  const known=Object.values(state.wordStatuses).filter(v=>v==='known').length;
+  const pct=Math.min(100,Math.round((known/goal)*100));
+  const rem=Math.max(0,goal-known);
+  const avg=state.streak>0?Math.round(known/Math.max(1,state.streak)):0;
+
+  const circ=232.48;
+  const ring=document.getElementById('weekly-ring');
+  if(ring){ring.style.strokeDashoffset=circ-(pct/100)*circ;ring.style.stroke=pct>=100?'var(--success)':pct>=60?'var(--accent)':'var(--accent2)';}
+  const pctEl=document.getElementById('weekly-pct');
+  if(pctEl){pctEl.textContent=pct+'%';pctEl.style.color=pct>=100?'var(--success)':pct>=60?'var(--accent)':'var(--accent2)';}
+  const set=(id,v)=>{const e=document.getElementById(id);if(e)e.textContent=v;};
+  set('wt-done',known);set('wt-goal-disp',goal);set('wt-rem',rem);set('wt-total',known);set('wt-avg',avg);
+  const cong=document.getElementById('wt-congrats');if(cong)cong.style.display=pct>=100?'inline':'none';
+  renderCatBars('dash-cat-bars');
+}
+
+function renderCatBars(id){
+  const el=document.getElementById(id);if(!el)return;
+  el.innerHTML=Object.keys(WORD_DB).map(cat=>{
+    const total=WORD_DB[cat].length;
+    const known=WORD_DB[cat].filter((_,i)=>state.wordStatuses[cat+'_'+i]==='known').length;
+    const target=state.catTargets[cat]||total;
+    const pct=Math.min(100,Math.round((known/target)*100));
+    return `<div class="wt-cat-bar-row">
+      <div class="wt-cat-bar-label">${CAT_LABELS[cat]}</div>
+      <div class="wt-cat-bar-track"><div class="wt-cat-bar-fill" style="width:${pct}%;background:${CAT_COLORS[cat]}"></div></div>
+      <div class="wt-cat-bar-pct">${known}/${target}</div>
+    </div>`;
+  }).join('');
+}
+
+// ===== WORD PANELS (Dashboard expand) =====
+function toggleWordPanel(type){
+  const panel=document.getElementById('panel-'+type+'-words');
+  const arrow=document.getElementById(type+'-arrow');
+  const open=panel.style.display!=='none';
+  panel.style.display=open?'none':'block';
+  arrow.textContent=open?'▼':'▲';
+  if(!open)renderWordPanel(type);
+}
+
+function renderWordPanel(type){
+  const el=document.getElementById(type+'-words-content');
+  const grouped={};
+  Object.keys(WORD_DB).forEach(cat=>{
+    WORD_DB[cat].forEach((w,i)=>{
+      if(state.wordStatuses[cat+'_'+i]===type){
+        if(!grouped[cat])grouped[cat]=[];
+        grouped[cat].push({...w,cat,idx:i});
+      }
+    });
+  });
+  const cats=Object.keys(grouped);
+  if(!cats.length){
+    el.innerHTML=`<div class="empty-state" style="padding:16px"><span class="emoji">${type==='known'?'📭':'🎉'}</span>${type==='known'?'Henüz ezberlenen kelime yok':'Harika! Bilmediğin kelime yok'}</div>`;
+    return;
+  }
+  const total=cats.reduce((s,c)=>s+grouped[c].length,0);
+  const color=type==='known'?'var(--success)':'var(--danger)';
+  let html=`<div style="display:flex;gap:7px;flex-wrap:wrap;margin-bottom:14px;padding-bottom:12px;border-bottom:1px solid var(--border)">
+    <button onclick="filterWordPanel('${type}','all',this)" class="wl-cat-btn active" style="font-size:0.65rem;padding:4px 9px">Tümü (${total})</button>`;
+  cats.forEach(cat=>{html+=`<button onclick="filterWordPanel('${type}','${cat}',this)" class="wl-cat-btn" style="font-size:0.65rem;padding:4px 9px">${CAT_LABELS[cat]} (${grouped[cat].length})</button>`;});
+  html+=`</div><div id="${type}-word-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(195px,1fr));gap:7px">`;
+  cats.forEach(cat=>{
+    grouped[cat].forEach(w=>{
+      const phonetic=PHONETICS[w.w.toLowerCase()]||PHONETICS[w.w]||'';
+      const safeW=w.w.replace(/'/g,"\\'");
+      html+=`<div class="word-chip-card" data-cat="${cat}"
+        onmouseenter="this.style.borderColor='${color}'" onmouseleave="this.style.borderColor='var(--border)'"
+        onclick="quickSpeak('${safeW}')">
+        <div style="font-family:'Playfair Display',serif;font-size:0.93rem;font-weight:700;color:${color};margin-bottom:2px">${w.w} <span style="font-size:0.62rem;opacity:0.45">🔊</span></div>
+        ${phonetic?`<div style="font-family:'DM Mono',monospace;font-size:0.62rem;color:var(--accent3);margin-bottom:3px">${phonetic}</div>`:''}
+        <div style="font-size:0.76rem;color:var(--text)">${w.t}</div>
+        <div style="font-size:0.65rem;color:var(--muted);margin-top:3px;font-family:'DM Mono',monospace">${CAT_LABELS[cat]}</div>
+      </div>`;
+    });
+  });
+  html+='</div>';
+  el.innerHTML=html;
+}
+
+function filterWordPanel(type,cat,btn){
+  document.querySelectorAll(`#panel-${type}-words .wl-cat-btn`).forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  const grid=document.getElementById(type+'-word-grid');
+  if(grid)grid.querySelectorAll('.word-chip-card').forEach(c=>{c.style.display=(cat==='all'||c.dataset.cat===cat)?'':'none';});
+}
+
+// ===== SKILLS =====
+function saveSkills(){
+  ['vocab','listen','trans','interp','write'].forEach(k=>{
+    const v=parseInt(document.getElementById('s-'+k).value)||state.skills[k]||0;
+    state.skills[k]=Math.min(100,Math.max(0,v));
+    document.getElementById('s-'+k).value='';
+  });
+  updateStreak();saveState();updateDashboard();
+}
+
+function updateStreak(){
+  const today=new Date().toDateString();
+  if(state.lastStudyDate===today)return;
+  const yesterday=new Date(Date.now()-86400000).toDateString();
+  state.streak=state.lastStudyDate===yesterday?(state.streak||0)+1:1;
+  state.lastStudyDate=today;
+}
+
+// ===== VOCAB =====
+function addVocab(){
+  const w=document.getElementById('v-word').value.trim();
+  const m=document.getElementById('v-meaning').value.trim();
+  if(!w||!m)return;
+  state.vocab.push({id:Date.now(),w,m,e:document.getElementById('v-example').value.trim(),field:document.getElementById('v-field').value,date:new Date().toLocaleDateString('tr-TR')});
+  document.getElementById('v-word').value='';document.getElementById('v-meaning').value='';document.getElementById('v-example').value='';
+  saveState();renderVocab();updateDashboard();
+}
+
+function renderVocab(){
+  const q=(document.getElementById('vocab-search').value||'').toLowerCase();
+  const f=document.getElementById('vocab-filter').value;
+  const items=state.vocab.filter(v=>(!f||v.field===f)&&(!q||v.w.toLowerCase().includes(q)||v.m.toLowerCase().includes(q)));
+  const el=document.getElementById('vocab-list');
+  if(!items.length){el.innerHTML='<div class="empty-state"><span class="emoji">📚</span>Kelime bulunamadı</div>';return;}
+  el.innerHTML=items.reverse().map(v=>`
+    <div class="vocab-item">
+      <div><div class="vocab-word">${v.w}</div><div style="font-size:0.72rem;color:var(--muted)">${v.date}</div></div>
+      <div style="font-size:0.83rem">${v.m}</div>
+      <div class="vocab-field">${v.field}</div>
+      <button class="btn-danger" onclick="deleteVocab(${v.id})">✕</button>
+    </div>`).join('');
+}
+function deleteVocab(id){state.vocab=state.vocab.filter(v=>v.id!==id);saveState();renderVocab();updateDashboard();}
+
+// ===== QUIZ =====
+function initQuiz(){
+  state.quizDeck=[...state.vocab].sort(()=>Math.random()-0.5);
+  state.quizIndex=0;state.quizFlipped=false;renderQuiz();
+}
+function renderQuiz(){
+  const deck=state.quizDeck;
+  if(!deck.length){document.getElementById('quiz-card').innerHTML='<div style="color:var(--muted);font-size:0.85rem">Kelime bankası boş. Önce kelime ekle!</div>';return;}
+  const w=deck[state.quizIndex];
+  document.getElementById('quiz-word').textContent=state.quizFlipped?w.m:w.w;
+  document.getElementById('quiz-hint').textContent=state.quizFlipped?'(Tıkla → İngilizce)':'(Tıkla → Türkçe)';
+  document.getElementById('quiz-progress').textContent=(state.quizIndex+1)+' / '+deck.length;
+}
+function flipQuiz(){state.quizFlipped=!state.quizFlipped;renderQuiz();}
+function nextQuiz(){state.quizIndex=(state.quizIndex+1)%state.quizDeck.length;state.quizFlipped=false;renderQuiz();}
+function prevQuiz(){state.quizIndex=(state.quizIndex-1+state.quizDeck.length)%state.quizDeck.length;state.quizFlipped=false;renderQuiz();}
+
+// ===== STUDY LOG =====
+function addLog(){
+  const t=document.getElementById('log-topic').value.trim();
+  const m=parseInt(document.getElementById('log-mins').value)||0;
+  if(!t||!m)return;
+  state.logs.push({id:Date.now(),topic:t,mins:m,type:document.getElementById('log-type').value,date:new Date().toLocaleDateString('tr-TR')});
+  document.getElementById('log-topic').value='';document.getElementById('log-mins').value='';
+  updateStreak();saveState();renderStudyLog();updateDashboard();
+}
+function renderStudyLog(){
+  const el=document.getElementById('study-log-list');
+  if(!state.logs.length){el.innerHTML='<div class="empty-state"><span class="emoji">📋</span>Henüz kayıt yok</div>';return;}
+  const icons={vocab:'📚',listen:'🎧',trans:'✍️',interp:'🎙️',write:'📝',read:'📖'};
+  el.innerHTML=state.logs.slice().reverse().map(l=>`
+    <div class="log-item">
+      <div class="log-icon" style="background:rgba(200,169,110,0.1)">${icons[l.type]||'📋'}</div>
+      <div style="flex:1"><div style="font-size:0.85rem;font-weight:500">${l.topic}</div><div style="font-size:0.7rem;color:var(--muted)">${l.mins} dk · ${l.type} · ${l.date}</div></div>
+      <button class="btn-danger" onclick="deleteLog(${l.id})">✕</button>
+    </div>`).join('');
+}
+function deleteLog(id){state.logs=state.logs.filter(l=>l.id!==id);saveState();renderStudyLog();updateDashboard();}
+
+// ===== GOALS =====
+function addGoal(){
+  const t=document.getElementById('goal-text').value.trim();
+  if(!t)return;
+  state.goals.push({id:Date.now(),text:t,date:document.getElementById('goal-date').value,cat:document.getElementById('goal-cat').value,done:false});
+  document.getElementById('goal-text').value='';document.getElementById('goal-date').value='';
+  saveState();renderGoalsPanel();
+}
+function toggleGoal(id){const g=state.goals.find(g=>g.id===id);if(g)g.done=!g.done;saveState();renderGoalsPanel();}
+function deleteGoal(id){state.goals=state.goals.filter(g=>g.id!==id);saveState();renderGoalsPanel();}
+
+function renderGoalsPanel(){
+  // Weekly goal input
+  const wi=document.getElementById('weekly-goal-input');
+  if(wi)wi.placeholder=state.weeklyWordGoal||300;
+  const cg=document.getElementById('current-weekly-goal');
+  if(cg)cg.textContent=(state.weeklyWordGoal||300)+' kelime/hafta';
+  // Streak warn toggle
+  const sw=document.getElementById('streak-warn-toggle');
+  if(sw)sw.checked=state.streakWarnEnabled!==false;
+  // Last study
+  const ls=document.getElementById('last-study-lbl');
+  if(ls)ls.textContent=state.lastStudyDate||'—';
+  // Category targets
+  renderCatTargets();
+  // Custom goals
+  renderGoals();
+}
+
+function saveWeeklyGoal(){
+  const v=parseInt(document.getElementById('weekly-goal-input').value);
+  if(!v||v<1)return;
+  state.weeklyWordGoal=v;saveState();renderGoalsPanel();renderWordTarget();
+  const btn=event.target;btn.textContent='✓';setTimeout(()=>btn.textContent='Kaydet',1500);
+}
+function saveStreakWarn(){state.streakWarnEnabled=document.getElementById('streak-warn-toggle').checked;saveState();}
+
+function renderCatTargets(){
+  const el=document.getElementById('cat-targets-list');if(!el)return;
+  el.innerHTML=Object.keys(WORD_DB).map(cat=>{
+    const total=WORD_DB[cat].length;
+    const known=WORD_DB[cat].filter((_,i)=>state.wordStatuses[cat+'_'+i]==='known').length;
+    const target=state.catTargets[cat]||total;
+    const pct=Math.min(100,Math.round((known/target)*100));
+    return `<div style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:13px 15px;margin-bottom:9px">
+      <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:8px">
+        <div style="font-weight:600">${CAT_LABELS[cat]}</div>
+        <div style="display:flex;gap:6px;align-items:center">
+          <input type="number" value="${target}" min="1" max="${total}" id="cat-target-${cat}"
+            style="width:70px;padding:4px 8px;font-size:0.8rem" onchange="saveCatTarget('${cat}')">
+          <span style="font-size:0.72rem;color:var(--muted)">/ ${total} kelime</span>
+        </div>
+      </div>
+      <div style="display:flex;align-items:center;gap:10px">
+        <div style="flex:1;height:5px;background:var(--border);border-radius:99px;overflow:hidden">
+          <div style="height:100%;width:${pct}%;background:${CAT_COLORS[cat]};border-radius:99px;transition:width 0.5s"></div>
+        </div>
+        <div style="font-family:'DM Mono',monospace;font-size:0.7rem;color:var(--muted);width:55px;text-align:right">${known}/${target} (${pct}%)</div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function saveCatTarget(cat){
+  const v=parseInt(document.getElementById('cat-target-'+cat).value);
+  if(v&&v>0)state.catTargets[cat]=v;
+  saveState();renderCatTargets();renderWordTarget();
+}
+
+function renderGoals(){
+  const el=document.getElementById('goals-list');if(!el)return;
+  const done=state.goals.filter(g=>g.done).length;
+  const sumEl=document.getElementById('goals-summary');
+  if(sumEl)sumEl.textContent=done+' / '+state.goals.length+' tamamlandı';
+  if(!state.goals.length){el.innerHTML='<div class="empty-state"><span class="emoji">🎯</span>Henüz hedef eklenmedi</div>';return;}
+  const icons={vocab:'📚',listen:'🎧',trans:'✍️',interp:'🎙️',write:'📝',other:'🎯'};
+  el.innerHTML=state.goals.map(g=>`
+    <div class="goal-item" style="${g.done?'opacity:0.55':''}">
+      <div class="goal-check${g.done?' done':''}" onclick="toggleGoal(${g.id})">${g.done?'✓':''}</div>
+      <div style="flex:1">
+        <div style="font-size:0.85rem;${g.done?'text-decoration:line-through;':''}">${g.text}</div>
+        ${g.date?`<div style="font-size:0.7rem;color:var(--muted)">${icons[g.cat]||'🎯'} ${g.cat} · ${g.date}</div>`:''}
+      </div>
+      <button class="btn-danger" onclick="deleteGoal(${g.id})">✕</button>
+    </div>`).join('');
+}
+
+
+// ===== SUPABASE =====
+const SUPABASE_URL = 'https://lymrjdagjdecxgeunsql.supabase.co';
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx5bXJqZGFnamRlY3hnZXVuc3FsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzMyOTQ5NzksImV4cCI6MjA4ODg3MDk3OX0.ZiRuGl-fSyz3EaS_HFRo2LK8nE8FiUgoKj3pB_1ymIE';
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+let currentUser = null;
+let calYear = new Date().getFullYear();
+let calMonth = new Date().getMonth();
+
+// ===== POPUP MESSAGES =====
+const POPUP_MESSAGES = [
+  { emoji:'🔥', msg:'Harika gidiyorsun!', sub:'Bu tempoda hedefe çok yakınsın.', min:30 },
+  { emoji:'🚀', msg:'Böyle devam! Hedefe az kaldı!', sub:'Bugün harika bir iş çıkardın.', min:30 },
+  { emoji:'🌙', msg:'Yarın da gelmeyi aksatma!', sub:'Streak devam ediyor, güzel.', min:30 },
+  { emoji:'⚡', msg:'Bugün bir ekstra iyisin sanki!', sub:'Vibe tamamen farklı bugün.', min:30 },
+  { emoji:'😂', msg:'mylocks 1 yavaş olsana! Hızını bir tut!', sub:'1365 kelime mi hedefliyorsun ne?', min:50 },
+  { emoji:'🏆', msg:'Streak kırılmıyor! Efsane!', sub:'Bu azim çevirmenlikte işe yarayacak.', min:30 },
+  { emoji:'📚', msg:'Kelimeler kafaya yerleşiyor mu?', sub:'Spaced rep kartlarına da bak!', min:40 },
+  { emoji:'🎯', msg:'mylocks 1 hedef net, tempo sabit!', sub:'Akademik kelimeler seni bekliyor.', min:30 },
+  { emoji:'💪', msg:'Her kelime bir adım!', sub:'Bugün analiz ettiğin kelimeler yeter olmaz!', min:30 },
+  { emoji:'🌟', msg:'mylocks 1 bu iş sende var!', sub:'Hacettepe\'nin en iyi çevirmeni olacaksın.', min:30 },
+];
+
+let popupShown = false;
+
+function maybeShowStreakPopup(analyzedToday) {
+  if (popupShown) return;
+  if (analyzedToday < 30) return;
+  popupShown = true;
+
+  // Pick message based on count
+  const eligible = POPUP_MESSAGES.filter(m => analyzedToday >= m.min);
+  const msg = eligible[Math.floor(Math.random() * eligible.length)] || POPUP_MESSAGES[0];
+
+  const popup = document.getElementById('streak-popup');
+  document.getElementById('popup-emoji').textContent = msg.emoji;
+  document.getElementById('popup-msg').textContent = msg.msg;
+  document.getElementById('popup-sub').textContent = msg.sub + (state.streak > 1 ? ' 🔥 ' + state.streak + '. gün!' : '');
+
+  popup.classList.add('show');
+  setTimeout(() => { popup.classList.remove('show'); }, 3500);
+}
+
+// ===== AUTH =====
+async function signInWithGoogle() {
+  const btn = document.querySelector('.google-btn');
+  btn.textContent = 'Yönlendiriliyor...';
+  btn.disabled = true;
+  const { error } = await sb.auth.signInWithOAuth({
+    provider: 'google',
+    options: { redirectTo: window.location.href }
+  });
+  if (error) { btn.textContent = 'Hata: ' + error.message; btn.disabled = false; }
+}
+
+async function signOut() {
+  await sb.auth.signOut();
+  currentUser = null;
+  document.getElementById('app-container').style.display = 'none';
+  document.getElementById('login-screen').style.display = 'flex';
+}
+
+function showApp(user) {
+  currentUser = user;
+  document.getElementById('login-screen').style.display = 'none';
+  document.getElementById('app-container').style.display = 'block';
+
+  // User info in header
+  const name = user.user_metadata?.full_name || user.email?.split('@')[0] || 'Kullanıcı';
+  document.getElementById('user-name').textContent = name;
+  const avatar = user.user_metadata?.avatar_url;
+  if (avatar) {
+    const img = document.getElementById('user-avatar');
+    img.src = avatar; img.style.display = 'block';
+  }
+
+  // Load user data from Supabase, fall back to localStorage
+  loadUserData(user.id);
+}
+
+// ===== SUPABASE DATA SYNC =====
+async function loadUserData(userId) {
+  try {
+    const { data, error } = await sb.from('user_data').select('data').eq('user_id', userId).single();
+    if (data && data.data) {
+      const parsed = typeof data.data === 'string' ? JSON.parse(data.data) : data.data;
+      state = { ...state, ...parsed };
+      if (!state.catTargets) state.catTargets = { ...DEFAULT_CAT_TARGETS };
+      if (!state.srsCards) state.srsCards = {};
+      if (!state.dailyWords) state.dailyWords = {};
+    }
+  } catch(e) {
+    // Table may not exist yet — use localStorage
+    const local = localStorage.getItem('engHub4');
+    if (local) { try { const p = JSON.parse(local); state = { ...state, ...p }; } catch(e2) {} }
+  }
+  initDate();
+  updateDashboard();
+  renderSessionBtns();
+  renderWordTable();
+  renderAnalysis();
+  renderSRS();
+  updateSRSDot();
+  renderCalendar();
+  window.speechSynthesis && window.speechSynthesis.getVoices();
+}
+
+async function saveState() {
+  // Always save to localStorage as backup
+  try { localStorage.setItem('engHub4', JSON.stringify(state)); } catch(e) {}
+  // Save to Supabase if logged in
+  if (!currentUser) return;
+  try {
+    await sb.from('user_data').upsert({
+      user_id: currentUser.id,
+      data: JSON.stringify(state),
+      updated_at: new Date().toISOString()
+    }, { onConflict: 'user_id' });
+  } catch(e) {}
+}
+
+// ===== DAILY WORDS TRACKING =====
+function getTodayKey() {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+}
+
+function recordDailyWord(key, wordObj) {
+  if (!state.dailyWords) state.dailyWords = {};
+  const today = getTodayKey();
+  if (!state.dailyWords[today]) state.dailyWords[today] = [];
+  // Avoid duplicates
+  if (!state.dailyWords[today].find(w => w.key === key)) {
+    state.dailyWords[today].push({ key, w: wordObj.w, t: wordObj.t });
+  }
+}
+
+// Override setWStatus to track daily words
+const _origSetWStatus = setWStatus;
+
+// ===== CALENDAR =====
+function calNav(dir) {
+  calMonth += dir;
+  if (calMonth > 11) { calMonth = 0; calYear++; }
+  if (calMonth < 0) { calMonth = 11; calYear--; }
+  renderCalendar();
+}
+
+function renderCalendar() {
+  const container = document.getElementById('calendar-container');
+  const label = document.getElementById('cal-month-label');
+  if (!container) return;
+
+  const months = ['Ocak','Şubat','Mart','Nisan','Mayıs','Haziran','Temmuz','Ağustos','Eylül','Ekim','Kasım','Aralık'];
+  const days = ['Pzt','Sal','Çar','Per','Cum','Cmt','Paz'];
+  label.textContent = months[calMonth] + ' ' + calYear;
+
+  const firstDay = new Date(calYear, calMonth, 1);
+  let startDow = firstDay.getDay(); // 0=Sun
+  startDow = startDow === 0 ? 6 : startDow - 1; // Monday-first
+  const daysInMonth = new Date(calYear, calMonth + 1, 0).getDate();
+  const today = new Date();
+  const todayStr = `${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,'0')}-${String(today.getDate()).padStart(2,'0')}`;
+
+  let html = '<div class="cal-grid">';
+  days.forEach(d => { html += `<div class="cal-day-label">${d}</div>`; });
+  for (let i = 0; i < startDow; i++) html += '<div class="cal-day empty"></div>';
+
+  for (let d = 1; d <= daysInMonth; d++) {
+    const dateKey = `${calYear}-${String(calMonth+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+    const dayData = state.dailyWords && state.dailyWords[dateKey];
+    const count = dayData ? dayData.length : 0;
+    const isToday = dateKey === todayStr;
+    const hasData = count > 0;
+    html += `<div class="cal-day${hasData?' has-data':''}${isToday?' today':''}"
+      onmouseenter="showCalTooltip(event,'${dateKey}')"
+      onmouseleave="hideCalTooltip()"
+      onclick="showCalTooltip(event,'${dateKey}',true)">
+      <div class="cal-day-num">${d}</div>
+      ${hasData ? `<div class="cal-day-count">${count}k</div>` : ''}
+    </div>`;
+  }
+  html += '</div>';
+  container.innerHTML = html;
+}
+
+function showCalTooltip(e, dateKey, sticky) {
+  const tooltip = document.getElementById('cal-tooltip');
+  const dayData = state.dailyWords && state.dailyWords[dateKey];
+  if (!dayData || !dayData.length) {
+    hideCalTooltip(); return;
+  }
+  const d = new Date(dateKey + 'T12:00:00');
+  const dateLabel = d.toLocaleDateString('tr-TR', { day:'numeric', month:'long', year:'numeric' });
+  let html = `<div style="font-family:'DM Mono',monospace;font-size:0.65rem;color:var(--muted);margin-bottom:8px;text-transform:uppercase;letter-spacing:0.08em">${dateLabel}</div>`;
+  html += `<div style="font-family:'Playfair Display',serif;font-size:1.1rem;font-weight:700;color:var(--success);margin-bottom:10px">${dayData.length} kelime ezberlendi ✓</div>`;
+  html += '<div style="display:flex;flex-wrap:wrap;gap:4px">';
+  dayData.forEach(w => {
+    html += `<span class="cal-tooltip-word" onclick="quickSpeak('${w.w.replace(/'/g,"\\'")}');event.stopPropagation()">${w.w} 🔊</span>`;
+  });
+  html += '</div>';
+  tooltip.innerHTML = html;
+  tooltip.classList.add('show');
+  // Position
+  const rect = e.target.getBoundingClientRect();
+  let left = rect.left + window.scrollX;
+  let top = rect.bottom + window.scrollY + 8;
+  if (left + 280 > window.innerWidth) left = window.innerWidth - 290;
+  tooltip.style.left = left + 'px';
+  tooltip.style.top = top + 'px';
+  if (sticky) {
+    document.addEventListener('click', hideCalTooltip, { once: true });
+  }
+}
+function hideCalTooltip() {
+  const t = document.getElementById('cal-tooltip');
+  if (t) t.classList.remove('show');
+}
+
+// ===== SUPABASE SETUP (Create table if needed) =====
+async function ensureTable() {
+  // Try to create the table via RPC or just upsert and handle error
+  // The table needs to be created manually in Supabase SQL editor:
+  // CREATE TABLE user_data (user_id UUID PRIMARY KEY, data JSONB, updated_at TIMESTAMPTZ);
+  // ALTER TABLE user_data ENABLE ROW LEVEL SECURITY;
+  // CREATE POLICY "own data" ON user_data FOR ALL USING (auth.uid() = user_id);
+}
+
+// ===== BOOT WITH AUTH =====
+(async function boot() {
+  // Check for existing session
+  const { data: { session } } = await sb.auth.getSession();
+  if (session) {
+    showApp(session.user);
+  }
+  // Listen for auth changes (handles redirect back from Google)
+  sb.auth.onAuthStateChange((event, session) => {
+    if (event === 'SIGNED_IN' && session) {
+      showApp(session.user);
+    } else if (event === 'SIGNED_OUT') {
+      document.getElementById('app-container').style.display = 'none';
+      document.getElementById('login-screen').style.display = 'flex';
+    }
+  });
+})();
+
+</script>
+</body>
+</html>
