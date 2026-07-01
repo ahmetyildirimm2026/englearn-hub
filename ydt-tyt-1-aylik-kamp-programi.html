@@ -1,0 +1,755 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>YDTKOCUM - 1. Ay Kampı ve Strateji Rehberi</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        body {
+            background: linear-gradient(135deg, #e0e6ed 0%, #b3c5d7 100%);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 60px 20px;
+            position: relative;
+        }
+
+        /* Ana Başlık Alanı */
+        .main-header {
+            text-align: center;
+            margin-bottom: 50px;
+            z-index: 10;
+        }
+
+        .main-header h1 {
+            font-size: 3rem;
+            color: #1a2a3a;
+            font-weight: 800;
+            margin-bottom: 12px;
+            letter-spacing: 1px;
+        }
+
+        .main-header p {
+            font-size: 1.3rem;
+            color: #4a5568;
+            font-weight: 600;
+        }
+
+        /* Genel İçerik Konteyneri */
+        .container {
+            max-width: 1300px;
+            width: 100%;
+            display: flex;
+            flex-direction: column;
+            gap: 50px;
+            z-index: 10;
+            margin-bottom: 60px;
+        }
+
+        /* Kart Yapıları (Cam Efektli) */
+        .section-card {
+            background: rgba(255, 255, 255, 0.75);
+            backdrop-filter: blur(15px);
+            -webkit-backdrop-filter: blur(15px);
+            border: 1px solid rgba(255, 255, 255, 0.5);
+            border-radius: 24px;
+            padding: 40px;
+            box-shadow: 0 15px 35px rgba(31, 38, 135, 0.04);
+        }
+
+        /* Kamp Kazanımları Kartı (Yeşil Vurgu) */
+        .section-card.benefits-card {
+            background: rgba(255, 255, 255, 0.85);
+            border-left: 8px solid #16a085;
+        }
+
+        /* YDT Rehber Kartı (Koyu Antrasit) */
+        .section-card.ydt-guide-card {
+            background: rgba(30, 34, 42, 0.95);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            color: #e0e6ed;
+        }
+
+        /* Kapanış/Motivasyon Kartı (Lacivert Geçişli) */
+        .section-card.motivation-card {
+            background: linear-gradient(135deg, #1a2a3a 0%, #2c3e50 100%);
+            color: #ffffff;
+            border: none;
+            text-align: center;
+        }
+
+        /* Bölüm Başlıkları */
+        .section-title {
+            font-size: 2rem;
+            font-weight: 800;
+            color: #1a2a3a;
+            margin-bottom: 30px;
+            border-bottom: 3px solid #1a2a3a;
+            padding-bottom: 10px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .benefits-card .section-title { color: #16a085; border-bottom: 3px solid #16a085; }
+        .ydt-guide-card .section-title { color: #f1c40f; border-bottom: 3px solid #f1c40f; }
+
+        /* Kural / Tavsiye Blokları */
+        .rule-block {
+            margin-bottom: 35px;
+        }
+        .rule-block:last-child { margin-bottom: 0; }
+
+        .rule-header {
+            font-size: 1.35rem;
+            font-weight: 700;
+            color: #1a2a3a;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .benefits-card .rule-header { color: #2c3e50; }
+        .ydt-guide-card .rule-header { color: #ffffff; }
+
+        .rule-text {
+            font-size: 1.05rem;
+            line-height: 1.6;
+            color: #334155;
+            font-weight: 500;
+            padding-left: 32px;
+            margin-bottom: 10px;
+        }
+
+        .ydt-guide-card .rule-text { color: #cbd5e1; }
+
+        /* Koç Tüyosu Kutuları */
+        .coach-tip {
+            background: rgba(26, 42, 58, 0.05);
+            border-left: 4px solid #1a2a3a;
+            padding: 12px 20px;
+            margin-top: 8px;
+            margin-left: 32px;
+            font-size: 0.95rem;
+            font-style: italic;
+            color: #1a2a3a;
+            font-weight: 600;
+            border-radius: 0 8px 8px 0;
+        }
+
+        .benefits-card .coach-tip { background: rgba(22, 160, 133, 0.05); border-left: 4px solid #16a085; color: #16a085; }
+        .ydt-guide-card .coach-tip { background: rgba(255, 255, 255, 0.05); border-left: 4px solid #f1c40f; color: #f1c40f; }
+
+        /* ================= KAMP PROGRAMI DÜZENİ ================= */
+        .week-block {
+            margin-top: 20px;
+        }
+
+        .week-section-title {
+            font-size: 2rem;
+            color: #1a2a3a;
+            font-weight: 800;
+            border-left: 6px solid #1a2a3a;
+            padding-left: 15px;
+            margin-bottom: 25px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .program-container {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 20px;
+            width: 100%;
+        }
+
+        .card {
+            background: rgba(255, 255, 255, 0.7);
+            backdrop-filter: blur(15px);
+            -webkit-backdrop-filter: blur(15px);
+            border: 1px solid rgba(255, 255, 255, 0.4);
+            border-radius: 20px;
+            padding: 25px;
+            box-shadow: 0 10px 30px rgba(31, 38, 135, 0.02);
+            display: flex;
+            flex-direction: column;
+        }
+
+        .card.program-notes-card {
+            background: rgba(30, 34, 42, 0.95);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            color: #e0e6ed;
+            grid-row: span 2;
+            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.12);
+            justify-content: flex-start;
+        }
+
+        .card-title {
+            font-size: 1.35rem;
+            color: #1a2a3a;
+            font-weight: 800;
+            border-bottom: 2px solid rgba(26, 42, 58, 0.1);
+            padding-bottom: 6px;
+            margin-bottom: 15px;
+            text-transform: uppercase;
+        }
+
+        .program-notes-card .card-title {
+            color: #f1c40f;
+            border-bottom: 2px solid rgba(241, 196, 15, 0.3);
+            margin-bottom: 8px;
+        }
+
+        .task-list { list-style: none; }
+
+        .task-item {
+            font-size: 1.05rem;
+            color: #2c3e50;
+            line-height: 1.5;
+            margin-bottom: 12px;
+            font-weight: 600;
+        }
+
+        .program-notes-card .task-item {
+            color: #ffffff;
+            font-size: 1rem;
+            font-weight: 500;
+            line-height: 1.6;
+        }
+
+        .highlight {
+            color: #1a2a3a;
+            font-weight: 800;
+            background: rgba(26, 42, 58, 0.08);
+            padding: 2px 6px;
+            border-radius: 6px;
+            font-size: 0.9rem;
+            display: inline-block;
+        }
+
+        /* Sabit Alt Bilgiler */
+        .footer-rules {
+            background: rgba(255, 255, 255, 0.8);
+            border-left: 5px solid #1a2a3a;
+            border-radius: 0 16px 16px 0;
+            padding: 20px;
+            width: 100%;
+            box-shadow: 0 8px 25px rgba(0,0,0,0.02);
+            margin-top: 20px;
+        }
+
+        .footer-rule-item {
+            font-size: 1.1rem;
+            color: #1a2a3a;
+            font-weight: 700;
+            margin-bottom: 8px;
+        }
+        .footer-rule-item:last-child { margin-bottom: 0; }
+
+        .brand-footer {
+            font-size: 1.2rem;
+            font-weight: 800;
+            color: #1a2a3a;
+            letter-spacing: 2px;
+            text-transform: lowercase;
+            border-top: 1px solid rgba(26, 42, 58, 0.2);
+            padding-top: 8px;
+            width: 150px;
+            text-align: center;
+            margin: 20px auto 0 auto;
+            opacity: 0.8;
+        }
+
+        /* Duyarlılık (Responsive) */
+        @media (max-width: 1100px) {
+            .program-container { grid-template-columns: repeat(2, 1fr); }
+            .card.program-notes-card { grid-row: auto; grid-column: span 2; }
+        }
+        @media (max-width: 650px) {
+            .program-container { grid-template-columns: 1fr; }
+            .card.program-notes-card { grid-column: auto; }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="main-header">
+        <h1>1. AY STRATEJİ REHBERİ & KAMP PROGRAMI 🚀</h1>
+        <p>YDTKOCUM Derece Stratejili Gelişim Çizelgesi</p>
+    </div>
+
+    <div class="container">
+
+        <!-- ================= BÖLÜM 1: KAMP KAZANIMLARI ================= -->
+        <div class="section-card benefits-card">
+            <h2 class="section-title">🚀 BU KAMP SANA NE KAZANDIRACAK?</h2>
+
+            <div class="rule-block">
+                <div class="rule-header">✔ 1. Sağlam Bir TYT & YDT Temeli ve Ders Çalışma Disiplini</div>
+                <div class="rule-text">
+                    Bu 1 aylık kampın sonunda, sıfırdan başlayan bir dilcinin en çok zorlandığı "masaya oturma ve odaklanma" sorununu tamamen geride bırakacaksın. TYT'nin ve YDT'nin en temel, en çok soru getiren omurga konularını eriterek sürecin kalan aylarını çok daha hafif ve öz güvenli geçireceksin.
+                </div>
+            </div>
+
+            <div class="rule-block">
+                <div class="rule-header">✔ 2. Matematik Korkusunu Aşma ve İşlem Hızı</div>
+                <div class="rule-text">
+                    "Dilciyim, matematik yapamam" tabularını ilk 2 haftada yıkacaksın. Temel işlem aritmetiği, sayılar arasındaki mantık ilişkileri ve problem çözme altyapın oturacağı için, sene ortasında TYT matematikten korkmak yerine net koparan tarafa geçeceksin.
+                </div>
+            </div>
+
+            <div class="rule-block">
+                <div class="rule-header">✔ 3. Günlük Kelime (Vocab) ve Çeviri Alışkanlığı</div>
+                <div class="rule-text">
+                    Her gün istisnasız yapacağın kelime çalışmaları ve 2. haftadan itibaren sisteme girecek olan 10 TR-İNG / 10 İNG-TR günlük çeviri görevleriyle dille arandaki bağı kopmaz hale getireceksin. Sadece gramer ezberleyen değil, gördüğü İngilizce cümleyi şakır şakır anlayan bir dilci olma yolunda dev bir adım atacaksın.
+                    <div class="coach-tip">Koçun Öngörüsü: Bu kampı eksiksiz bitiren bir öğrenci, sadece 4 hafta içinde kelime haznesini en az iki katına çıkaracak ve paragraf sorularına çok daha cesur yaklaşacaktır.</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ================= BÖLÜM 2: TYT ALTIN KURALLAR ================= -->
+        <div class="section-card">
+            <h2 class="section-title">⚠️ TYT İÇİN ALTIN KURALLAR</h2>
+
+            <div class="rule-block">
+                <div class="rule-header">📌 1. Görüp Korkma, Plana Sadık Kal (Matematik Ön Yargısını Kır)</div>
+                <div class="rule-text">
+                    1. ve 2. hafta programında Temel Kavramlar, Bölme-Bölünebilme ve EBOB-EKOK gibi yoğun TYT konularını üst üste görünce hemen korkup kampa havlu atma. Bir dilci olarak bu kamptaki asıl amacın ilk aydan TYT matematiğini fullemek değil; o paslanmış temel işlem aritmetiğini, işlem hızını ve sayılar arasındaki mantık ilişkisini çözmektir. Dilcilerin %90'ı tam olarak bu aşamada eleniyor.
+                    <div class="coach-tip">Koç Tüyosu: Sakin kal ve sadece bugünün görevine odaklan. Yapamadığın her matematik sorusu, sınavda seni binlerce dilcinin önüne geçirecek bir sıçrama tahtasıdır.</div>
+                </div>
+            </div>
+
+            <div class="rule-block">
+                <div class="rule-header">📌 2. Farklı Öğretmenlere Şans Ver & Kendi Özel Kadronu Kur</div>
+                <div class="rule-text">
+                    "Ben bu dersi asla yapamam, kafam basmıyor" dediğin branşlar varsa, muhtemelen henüz sana hitap eden hocayı bulamamışsındır. Bu ilk ayda YouTube'daki farklı öğretmenleri keşfetmek için kendine zaman tanı. Dinlediğinde sana konuyu mantığıyla öğreten, seviyene uygun hocaları seçerek kendi oynatma listelerini oluştur. Kendi ders kadronun patronu sen ol.
+                </div>
+            </div>
+
+            <div class="rule-block">
+                <div class="rule-header">📌 3. Uçan Akıl Kalan Defter: TYT Kurallarını Not Et</div>
+                <div class="rule-text">
+                    Süreci zamana yayarken, şimdiden kolaycılığa kaçıp "nokta atışı" formül peşinde koşma. Programın pazar günlerindeki o büyük tekrar rutinlerinin havada kalmaması için kendine ait bir TYT Analiz Defteri tutmalısın. Matematikte takıldığın o formülleri ve Türkçe dil bilgisinde kaçırdığın kuralları kendi el yazınla bu deftere kaydet.
+                    <div class="coach-tip">Koç Tüyosu: Pazar günleri sıfırdan konu çalışmak yerine sadece bu defteri açıp kendi notlarını okuman, tüm sistemi ayakta tutacaktır.</div>
+                </div>
+            </div>
+
+            <div class="rule-block">
+                <div class="rule-header">🚨 Mutlaka Her Konudan Video + Soru Çözümü İzlenmeli!</div>
+                <div class="rule-text">
+                    Sadece konu anlatım videosu izleyerek konuyu öğrenemezsin. Programdaki her TYT konusunun ardından hocaların soru çözüm videolarını da pür dikkat izlemeli, ardından kendi testlerine geçmelisin.
+                </div>
+            </div>
+        </div>
+
+        <!-- ================= BÖLÜM 3: YDT ALTIN KURALLAR ================= -->
+        <div class="section-card ydt-guide-card">
+            <h2 class="section-title">⚠️ YDT İÇİN ALTIN KURALLAR</h2>
+
+            <div class="rule-block">
+                <div class="rule-header">📌 1. Vocab Kilit Noktamız: Kelime Çalışmalarında "Avcı" Modunu Aç</div>
+                <div class="rule-text">
+                    Programda her gün karşına çıkan kelime testleri asla aksatılmamalı. Kelimeleri hazır listelerden ezberleyip geçmek geçici bir çözümdür. Vocab testlerini çözerken amacın sadece doğru şıkkı bulmak olmasın. Yanlış şıklarda karşına çıkan, seni tereddütte bırakan tüm kelimeleri o günün "avı" olarak gör ve kelime defterine kaydet.
+                    <div class="coach-tip">Koç Tüyosu: Kelime bilgin ne kadar derinse, okuma pasajlarında o kadar az heyecanlanır ve o kadar çok net çıkarırsın. Dil nankördür, süreklilik zincirini koparma.</div>
+                </div>
+            </div>
+
+            <div class="rule-block">
+                <div class="rule-header">📌 2. İlk Ay "Skills Tuzağına" Düşme & Okumadan Kaçma</div>
+                <div class="rule-text">
+                    İlk haftalarda programda neden Skills (soru tipleri) çalışması olmadığını sorgulama. Gramer ve kelime altyapısı oturmadan soru tipine geçmek zaman kaybıdır. Bunun yerine 2. haftadan itibaren başlayan okuma pasajlarına ve her güne eklediğimiz 10 TR-İNG, 10 İNG-TR çeviri görevlerine odaklan. Cümleleri analiz ederek dille temas et.
+                    <div class="coach-tip">Koç Tüyosu: Sene sonunda elinde geriye dönüp bakacağın en değerli hazine, başkalarının hazır notları değil; senin kendi çeviri hatalarından ürettiğin defterindir.</div>
+                </div>
+            </div>
+
+            <div class="rule-block">
+                <div class="rule-header">📌 3. Analiz Etmeden Yeni Teste Geçme</div>
+                <div class="rule-text">
+                    Yanlış çıkan her sorunun doğrusunu ve mantığını öğrenmek zorundasın. Hatalı cümleleri tek tek analiz edip, bilmediğin kelimelere bakmadan asla yeni bir teste başlama. Sana sınavı kazandıracak olan doğru yaptığın sorular değil, yanlış yapıp doğrusunu öğrendiğin sorulardır.
+                </div>
+            </div>
+        </div>
+
+        <!-- ================= BÖLÜM 4: KAMP MOTİVASYONU ================= -->
+        <div class="section-card motivation-card">
+            <h2 class="section-title" style="justify-content: center; border-bottom: 2px solid rgba(241,196,15,0.4);">🔥 BU 4 HAFTA SENİN GELECEĞİNİN FRAGMANI</h2>
+            <p class="card-text" style="margin-top: 20px; font-size: 1.15rem; line-height: 1.7;">
+                Sıfırdan başlayan bir öğrenci olarak bu kampa ilk adımını attığında kafanın karışması, netlerinin sihirli bir değnek değmiş gibi bir anda uçup gitmemesi tamamen normaldir. Temel atmak sabır ve sükunet işidir. Sen bugün o masaya isteksizce de olsa otururken, 1 ay sonra konuları eritmiş, sistemini oturtmuş ve öz güveni yerine gelmiş o güçlü dilciyi hayal et. Bugün çektiğin zorluk, sene sonundaki derece netlerinin habercisidir.
+            </p>
+            <div class="coach-tip" style="margin-left: 0; margin-top: 25px; text-align: center; background: rgba(255, 255, 255, 0.05); border-left: 4px solid #f1c40f; color: #f1c40f;">
+                🚀 YDT bir zeka veya yetenek sınavı değildir; doğru bir stratejiyle, her gün sabırla ve inatla örülen bir disiplin sınavıdır. Başlıyoruz!
+            </div>
+        </div>
+
+
+        <!-- =============================================================== -->
+        <!-- ================= BÖLÜM 5: 4 HAFTALIK PROGRAM AKIŞI ============ -->
+        <!-- =============================================================== -->
+
+        <!-- HAFTA 1 -->
+        <div class="week-block">
+            <h2 class="week-section-title">📅 1. HAFTA: TEMEL ATMA DÖNEMİ</h2>
+            <div class="program-container">
+                <div class="card">
+                    <h3 class="card-title">Pazartesi</h3>
+                    <ul class="task-list">
+                        <li class="task-item">Sözcükte Anlam <span class="highlight">+2 Test</span></li>
+                        <li class="task-item">Cümlede Anlam <span class="highlight">+3 Test</span></li>
+                        <li class="task-item">Pronouns <span class="highlight">+5 Test</span></li>
+                        <li class="task-item">Vocab <span class="highlight">+2 Test</span></li>
+                    </ul>
+                </div>
+                <div class="card">
+                    <h3 class="card-title">Salı</h3>
+                    <ul class="task-list">
+                        <li class="task-item">Temel İşlem Aritmetiki <span class="highlight">+2 Test</span></li>
+                        <li class="task-item">Temel Kavramlar <span class="highlight">+4 Test</span></li>
+                        <li class="task-item">Vocab <span class="highlight">+2 Test</span></li>
+                        <li class="task-item">Tense Video <span class="highlight">+3 Test</span></li>
+                    </ul>
+                </div>
+                <div class="card">
+                    <h3 class="card-title">Çarşamba</h3>
+                    <ul class="task-list">
+                        <li class="task-item">Paragrafta Anlam <span class="highlight">+3 Test</span></li>
+                        <li class="task-item">Anlatım Biçimleri <span class="highlight">+2 Test</span></li>
+                        <li class="task-item">Paragraf Denemesi</li>
+                        <li class="task-item">Tense Bitir <span class="highlight">+4 Test</span></li>
+                        <li class="task-item">Vocab <span class="highlight">+2 Test</span></li>
+                    </ul>
+                </div>
+                <div class="card program-notes-card">
+                    <h3 class="card-title">Hafta 1 Notları 📋</h3>
+                    <p class="task-item" style="font-style: italic; color: #cbd5e1; font-size: 0.95rem; margin-bottom: 20px;">
+                        "İlk haftamızda en temel konulardan başlayıp TYT adına hızlıca konuları eritmemiz gerekiyor. YDT adına ise herhangi bir konuyu tam olarak bilmediğimizi varsayarak sıfırdan başlayacağız, bu nedenle ilk hafta skills çalışması yok."
+                    </p>
+                    <h3 class="card-title" style="color: #f1c40f;">Pazar Rutini 🗓️</h3>
+                    <ul class="task-list">
+                        <li class="task-item">Pronoun Tekrarı <span class="highlight" style="background:rgba(255,255,255,0.15); color:#fff;">+1 Test</span></li>
+                        <li class="task-item">Tense Tekrarı <span class="highlight" style="background:rgba(255,255,255,0.15); color:#fff;">+2 Test</span></li>
+                        <li class="task-item">Modals Tekrarı <span class="highlight" style="background:rgba(255,255,255,0.15); color:#fff;">+2 Test</span></li>
+                        <li class="task-item">Vocab <span class="highlight" style="background:rgba(255,255,255,0.15); color:#fff;">+2 Test</span></li>
+                        <li class="task-item">Yabancı Gazete Okuma</li>
+                        <li class="task-item">20 Paragraf Sorusu</li>
+                    </ul>
+                </div>
+                <div class="card">
+                    <h3 class="card-title">Perşembe</h3>
+                    <ul class="task-list">
+                        <li class="task-item">Tek - Çift Sayılar <span class="highlight">+3 Test</span></li>
+                        <li class="task-item">Pozitif - Negatif Sayılar <span class="highlight">+3 Test</span></li>
+                        <li class="task-item">Pronoun - Tense Konu Tekrarı + Soru Çözümü</li>
+                        <li class="task-item">Paragraf Denemesi</li>
+                    </ul>
+                </div>
+                <div class="card">
+                    <h3 class="card-title">Cuma</h3>
+                    <ul class="task-list">
+                        <li class="task-item">Fiil <span class="highlight">+3 Test</span></li>
+                        <li class="task-item">Ek Fiil <span class="highlight">+3 Test</span></li>
+                        <li class="task-item">Paragraf Denemesi</li>
+                        <li class="task-item">Modal Konu Anlatımı <span class="highlight">+3 Test</span></li>
+                        <li class="task-item">Vocab <span class="highlight">+2 Test</span></li>
+                    </ul>
+                </div>
+                <div class="card">
+                    <h3 class="card-title">Cumartesi</h3>
+                    <ul class="task-list">
+                        <li class="task-item">Ardışık Sayılar <span class="highlight">+2 Test</span></li>
+                        <li class="task-item">Basamak Analizi <span class="highlight">+2 Test</span></li>
+                        <li class="task-item">Modal - Tense Ortak <span class="highlight">+4 Test</span></li>
+                        <li class="task-item">Paragraf Denemesi</li>
+                        <li class="task-item">Vocab <span class="highlight">+2 Test</span></li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <!-- HAFTA 2 -->
+        <div class="week-block">
+            <h2 class="week-section-title">📅 2. HAFTA: TEMPO ARTIŞI DÖNEMİ</h2>
+            <div class="program-container">
+                <div class="card">
+                    <h3 class="card-title">Pazartesi</h3>
+                    <ul class="task-list">
+                        <li class="task-item">Paragraf Denemesi</li>
+                        <li class="task-item">Fiilde Çatı <span class="highlight">+5 Test</span></li>
+                        <li class="task-item">Fiilimsi <span class="highlight">+5 Test</span></li>
+                        <li class="task-item">Active / Passive <span class="highlight">+4 Test</span></li>
+                        <li class="task-item">10 TR - İNG Çeviri</li>
+                        <li class="task-item">10 İNG - TR Çeviri</li>
+                        <li class="task-item">Vocab <span class="highlight">+2 Test</span></li>
+                    </ul>
+                </div>
+                <div class="card">
+                    <h3 class="card-title">Salı</h3>
+                    <ul class="task-list">
+                        <li class="task-item">20 Paragraf Sorusu</li>
+                        <li class="task-item">Bölme - Bölünebilme + Asal Çarpanlar <span class="highlight">6 Test</span></li>
+                        <li class="task-item">Causative <span class="highlight">+3 Test</span></li>
+                        <li class="task-item">Active / Passive <span class="highlight">+3 Test</span></li>
+                        <li class="task-item">10 TR - İNG Çeviri</li>
+                        <li class="task-item">10 İNG - TR Çeviri</li>
+                        <li class="task-item">Vocab <span class="highlight">+2 Test</span></li>
+                    </ul>
+                </div>
+                <div class="card">
+                    <h3 class="card-title">Çarşamba</h3>
+                    <ul class="task-list">
+                        <li class="task-item">20 Paragraf Sorusu</li>
+                        <li class="task-item">Ses Bilgisi <span class="highlight">+5 Test</span></li>
+                        <li class="task-item">Coğrafya Haritalar <span class="highlight">1 Video</span></li>
+                        <li class="task-item">Adjective & Adverb <span class="highlight">+2 Test</span></li>
+                        <li class="task-item">10 İNG - TR Çeviri</li>
+                        <li class="task-item">10 TR - İNG Çeviri</li>
+                        <li class="task-item">Vocab <span class="highlight">+2 Test</span></li>
+                    </ul>
+                </div>
+                <div class="card program-notes-card">
+                    <h3 class="card-title">Hafta 2 Notları 📋</h3>
+                    <p class="task-item" style="font-style: italic; color: #cbd5e1; font-size: 0.95rem; margin-bottom: 20px;">
+                        "Bu hafta ile birlikte artık çalışma tempomuzu yavaş yavaş arttırıp tam istediğimiz hıza ulaşmaya bir adım daha yaklaşırız. Bu hafta YDT için temel grammar konularının yarısı bitmiş oluyor. TYT içinse her şeyin pratik olduğunu unutmamak lazım."
+                    </p>
+                    <h3 class="card-title" style="color: #f1c40f;">Pazar Rutini 🗓️</h3>
+                    <ul class="task-list">
+                        <li class="task-item">Pronoun Tekrarı <span class="highlight" style="background:rgba(255,255,255,0.15); color:#fff;">+1 Test</span></li>
+                        <li class="task-item">Tense Tekrarı <span class="highlight" style="background:rgba(255,255,255,0.15); color:#fff;">+2 Test</span></li>
+                        <li class="task-item">Modals Tekrarı <span class="highlight" style="background:rgba(255,255,255,0.15); color:#fff;">+2 Test</span></li>
+                        <li class="task-item">Vocab <span class="highlight" style="background:rgba(255,255,255,0.15); color:#fff;">+2 Test</span></li>
+                        <li class="task-item">Yabancı Gazete Okuma</li>
+                        <li class="task-item">20 Paragraf Sorusu</li>
+                    </ul>
+                </div>
+                <div class="card">
+                    <h3 class="card-title">Perşembe</h3>
+                    <ul class="task-list">
+                        <li class="task-item">20 Paragraf Sorusu</li>
+                        <li class="task-item">If / Wish Clauses <span class="highlight">+4 Test</span></li>
+                        <li class="task-item">EBOB - EKOK Problemleri <span class="highlight">+5 Test</span></li>
+                        <li class="task-item">10 TR - İNG Çeviri</li>
+                        <li class="task-item">10 İNG - TR Çeviri</li>
+                        <li class="task-item">Vocab <span class="highlight">+2 Test</span></li>
+                    </ul>
+                </div>
+                <div class="card">
+                    <h3 class="card-title">Cuma</h3>
+                    <ul class="task-list">
+                        <li class="task-item">20 Paragraf Sorusu</li>
+                        <li class="task-item">Cümlenin Ögeleri <span class="highlight">+5 Test</span></li>
+                        <li class="task-item">Cümle Türleri <span class="highlight">+4 Test</span></li>
+                        <li class="task-item">Relative Clauses <span class="highlight">+4 Test</span></li>
+                        <li class="task-item">10 TR - İNG Çeviri</li>
+                        <li class="task-item">10 İNG - TR Çeviri</li>
+                        <li class="task-item">Vocab <span class="highlight">+2 Test</span></li>
+                    </ul>
+                </div>
+                <div class="card">
+                    <h3 class="card-title">Cumartesi</h3>
+                    <ul class="task-list">
+                        <li class="task-item">20 Paragraf Sorusu</li>
+                        <li class="task-item">Relative Clauses <span class="highlight">+5 Test</span></li>
+                        <li class="task-item">Rasyonel Sayılar <span class="highlight">+6 Test</span></li>
+                        <li class="task-item">10 TR - İNG Çeviri</li>
+                        <li class="task-item">10 İNG - TR Çeviri</li>
+                        <li class="task-item">Vocab <span class="highlight">+2 Test</span></li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <!-- HAFTA 3 -->
+        <div class="week-block">
+            <h2 class="week-section-title">📅 3. HAFTA: VİTES YÜKSELTME DÖNEMİ</h2>
+            <div class="program-container">
+                <div class="card">
+                    <h3 class="card-title">Pazartesi</h3>
+                    <ul class="task-list">
+                        <li class="task-item">Paragraf Denemesi</li>
+                        <li class="task-item">Yazım Kuralları <span class="highlight">+5 Test</span></li>
+                        <li class="task-item">Dünya İklimler Haritası <span class="highlight">+2 Test</span></li>
+                        <li class="task-item">Conjunctions <span class="highlight">+3 Test</span></li>
+                        <li class="task-item">10 Cümle Tamamlama</li>
+                        <li class="task-item">20 Çeviri</li>
+                        <li class="task-item">Vocab <span class="highlight">+2 Test</span></li>
+                    </ul>
+                </div>
+                <div class="card">
+                    <h3 class="card-title">Salı</h3>
+                    <ul class="task-list">
+                        <li class="task-item">20 Paragraf Sorusu</li>
+                        <li class="task-item">Conjunctions <span class="highlight">+4 Test</span></li>
+                        <li class="task-item">1. Dereceden Denklemler <span class="highlight">+5 Test</span></li>
+                        <li class="task-item">Faktöriyel <span class="highlight">+3 Test</span></li>
+                        <li class="task-item">10 Cümle Tamamlama</li>
+                        <li class="task-item">20 Çeviri</li>
+                    </ul>
+                </div>
+                <div class="card">
+                    <h3 class="card-title">Çarşamba</h3>
+                    <ul class="task-list">
+                        <li class="task-item">20 Paragraf Sorusu</li>
+                        <li class="task-item">Noktalama İşaretleri <span class="highlight">+2 Test</span></li>
+                        <li class="task-item">Relative Clause <span class="highlight">+3 Test</span></li>
+                        <li class="task-item">Noun Clause <span class="highlight">+4 Test</span></li>
+                        <li class="task-item">Dünya Nüfus / Deprem Haritası</li>
+                        <li class="task-item">10 Cümle Tamamlama</li>
+                        <li class="task-item">20 Çeviri</li>
+                        <li class="task-item">Vocab <span class="highlight">+2 Test</span></li>
+                    </ul>
+                </div>
+                <div class="card program-notes-card">
+                    <h3 class="card-title">Hafta 3 Notları 📋</h3>
+                    <p class="task-item" style="font-style: italic; color: #cbd5e1; font-size: 0.95rem; margin-bottom: 20px;">
+                        "Final haftamızdan önceki son haftada artık vitesi sona takıp en hızlı şekilde ve en efektif yöntemle çalışıyoruz. Bu hafta ile İngilizceye dair neredeyse hiçbir soru işaretinin kalmadığı TYT adına ise Türkçenin bittiğini matematikte ise ilk 12 konunun sonuna yaklaştığını görüyoruz."
+                    </p>
+                    <h3 class="card-title" style="color: #f1c40f;">Pazar Rutini 🗓️</h3>
+                    <ul class="task-list">
+                        <li class="task-item">Conjunctions Tekrarı <span class="highlight" style="background:rgba(255,255,255,0.15); color:#fff;">+3 Test</span></li>
+                        <li class="task-item">Gerund & Infinitive Tekrarı <span class="highlight" style="background:rgba(255,255,255,0.15); color:#fff;">+3 Test</span></li>
+                        <li class="task-item">Türkçe Dil Bilgiga Tekrarı</li>
+                        <li class="task-item">20 Çeviri</li>
+                        <li class="task-item">Vocab <span class="highlight" style="background:rgba(255,255,255,0.15); color:#fff;">+2 Test</span></li>
+                    </ul>
+                </div>
+                <div class="card">
+                    <h3 class="card-title">Perşembe</h3>
+                    <ul class="task-list">
+                        <li class="task-item">20 Paragraf Sorusu</li>
+                        <li class="task-item">Conjunctions <span class="highlight">+3 Test</span></li>
+                        <li class="task-item">Quantifiers <span class="highlight">+5 Test</span></li>
+                        <li class="task-item">Basit Eşitsizlikler <span class="highlight">+5 Test</span></li>
+                        <li class="task-item">10 Cümle Tamamlama</li>
+                        <li class="task-item">20 Çeviri</li>
+                    </ul>
+                </div>
+                <div class="card">
+                    <h3 class="card-title">Cuma</h3>
+                    <ul class="task-list">
+                        <li class="task-item">2 Türkçe Denemesi</li>
+                        <li class="task-item">Gerund / Infinitive <span class="highlight">+5 Test</span></li>
+                        <li class="task-item">Dünya Kanal - Boğaz Haritası</li>
+                        <li class="task-item">10 Cümle Tamamlama</li>
+                        <li class="task-item">20 Çeviri</li>
+                        <li class="task-item">Vocab <span class="highlight">+2 Test</span></li>
+                        <li class="task-item">Makale Okuma</li>
+                    </ul>
+                </div>
+                <div class="card">
+                    <h3 class="card-title">Cumartesi</h3>
+                    <ul class="task-list">
+                        <li class="task-item">20 Paragraf Sorusu</li>
+                        <li class="task-item">Mutlak Değer <span class="highlight">+4 Test</span></li>
+                        <li class="task-item">Gerund - Infinitive <span class="highlight">+4 Test</span></li>
+                        <li class="task-item">10 Cümle Tamamlama</li>
+                        <li class="task-item">20 Çeviri</li>
+                        <li class="task-item">Vocab <span class="highlight">+2 Test</span></li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <!-- HAFTA 4 -->
+        <div class="week-block">
+            <h2 class="week-section-title">📅 4. HAFTA: ZİRVE & FİNAL DÖNEMİ</h2>
+            <div class="program-container">
+                <div class="card">
+                    <h3 class="card-title">Pazartesi</h3>
+                    <ul class="task-list">
+                        <li class="task-item">2 Türkçe Denemesi</li>
+                        <li class="task-item">1 YDT Denemesi</li>
+                        <li class="task-item">Dünya Akarsular <span class="highlight">+2 Test</span></li>
+                        <li class="task-item">Ses Bilgisi Tekrarı</li>
+                        <li class="task-item">Tense / Modal Tekrarı</li>
+                        <li class="task-item">Vocab <span class="highlight">+2 Test</span></li>
+                    </ul>
+                </div>
+                <div class="card">
+                    <h3 class="card-title">Salı</h3>
+                    <ul class="task-list">
+                        <li class="task-item">20 Paragraf Sorusu</li>
+                        <li class="task-item">1 Mini Deneme</li>
+                        <li class="task-item">Üslü Sayılar <span class="highlight">+5 Test</span></li>
+                        <li class="task-item">Active / Passive / Causative Konu Tekrarı</li>
+                        <li class="task-item">Vocab <span class="highlight">+2 Test</span></li>
+                        <li class="task-item">Makale Okuma</li>
+                    </ul>
+                </div>
+                <div class="card">
+                    <h3 class="card-title">Çarşamba</h3>
+                    <ul class="task-list">
+                        <li class="task-item">2 Türkçe Denemesi</li>
+                        <li class="task-item">1 Mini Deneme</li>
+                        <li class="task-item">Adjective & Adverb / Conditionals Konu Tekrarı</li>
+                        <li class="task-item">Dünyada Göller - İlk Uygarlıklar</li>
+                        <li class="task-item">Vocab <span class="highlight">+2 Test</span></li>
+                    </ul>
+                </div>
+                <div class="card program-notes-card">
+                    <h3 class="card-title">Hafta 4 Notları 📋</h3>
+                    <p class="task-item" style="font-style: italic; color: #cbd5e1; font-size: 0.95rem; margin-bottom: 20px;">
+                        "Bu hafta ile birlikte artık hem Türkçe hem Coğrafya haritaları hem de matematikteki ilk 12 konu hakkında bir bakış açımız oluşuyor. Bu kamp sonunda matematikte ilk 12 konu, TYT Türkçenin hepsi, YDT'de bütün grammar konuları ve coğrafyada bilinmesi gereken dünya haritalarını öğreniyoruz."
+                    </p>
+                    <h3 class="card-title" style="color: #f1c40f;">Pazar Rutini 🗓️</h3>
+                    <ul class="task-list">
+                        <li class="task-item">Matematikte İstediğin Konunun Tekrarı</li>
+                        <li class="task-item">Paragraf</li>
+                        <li class="task-item">Makale Çalışması</li>
+                        <li class="task-item">Pronouns Tekrarı</li>
+                    </ul>
+                </div>
+                <div class="card">
+                    <h3 class="card-title">Perşembe</h3>
+                    <ul class="task-list">
+                        <li class="task-item">20 Paragraf Sorusu</li>
+                        <li class="task-item">1 Mini Deneme</li>
+                        <li class="task-item">Relative / Noun Clause Konu Tekrarı <span class="highlight">+3 Test</span></li>
+                        <li class="task-item">Çarpanlara Ayırma <span class="highlight">+4 Test</span></li>
+                        <li class="task-item">Vocab <span class="highlight">+2 Test</span></li>
+                    </ul>
+                </div>
+                <div class="card">
+                    <h3 class="card-title">Cuma</h3>
+                    <ul class="task-list">
+                        <li class="task-item">2 Türkçe Denemesi</li>
+                        <li class="task-item">1 YDT Denemesi</li>
+                        <li class="task-item">Dünyada Başkentler</li>
+                        <li class="task-item">Conjunctions + Gerund / Infinitive <span class="highlight">+3 Test</span></li>
+                        <li class="task-item">Vocab <span class="highlight">+2 Test</span></li>
+                    </ul>
+                </div>
+                <div class="card">
+                    <h3 class="card-title">Cumartesi</h3>
+                    <ul class="task-list">
+                        <li class="task-item">20 Paragraf Sorusu</li>
+                        <li class="task-item">1 Mini Deneme</li>
+                        <li class="task-item">Vocab <span class="highlight">+2 Test</span></li>
+                        <li class="task-item">Makale Okuma</li>
+                        <li class="task-item">Matematikte Emin Olmadığın Konuları Tekrar Et</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <!-- Ortak Sabit Uyarılar -->
+        <div class="footer-rules">
+            <div class="footer-rule-item">📌 Mutlaka her konudan video + soru çözümü izlenmeli!</div>
+            <div class="footer-rule-item">📌 Vocab kilit noktamız, çalışmalar asla aksatılmamalı!</div>
+        </div>
+
+    </div>
+
+    <div class="brand-footer">
+        @ydtkocum_
+    </div>
+
+</body>
+</html>
