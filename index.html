@@ -1078,6 +1078,11 @@ document.getElementById('pwa-manifest').href=URL.createObjectURL(mblob);
           <button onclick="openFreeContentComments()" style="background:transparent;border:none;color:var(--muted);cursor:pointer;font-size:0.74rem;padding:0;display:flex;align-items:center;gap:4px;font-family:'DM Sans',sans-serif">💬 <span id="fc-comments-count">—</span> Yorum</button>
         </div>
 
+        <div style="display:flex;align-items:center;gap:10px;margin-top:12px;flex-wrap:wrap">
+          <div id="fc-star-rating" style="display:flex;gap:2px;font-size:1.1rem;line-height:1"></div>
+          <span id="fc-rating-summary" style="font-size:0.72rem;color:var(--muted)">Henüz puan yok</span>
+        </div>
+
         <div style="display:flex;gap:10px;margin-top:16px;flex-wrap:wrap">
           <button class="btn" onclick="openFreeContentViewer()" style="flex:1;min-width:160px;background:rgba(126,184,201,0.15);border:1px solid var(--accent2);color:var(--accent2)">👀 İçeriği Görüntüle</button>
           <button class="btn" onclick="downloadFreeContent()" style="flex:1;min-width:160px;background:rgba(200,169,110,0.15);border:1px solid var(--accent);color:var(--accent)">⬇ İndir</button>
@@ -5602,6 +5607,7 @@ async function loadFreeContentStats() {
   renderFreeContentStats();
   await checkFreeContentLikeStatus();
   await loadFreeContentCommentsCount();
+  await loadFreeContentRating();
 }
 
 function renderFreeContentStats() {
@@ -5675,6 +5681,62 @@ async function loadFreeContentCommentsCount() {
     if (error) console.warn('[free-content] yorum sayısı okunamadı:', error.message);
     const c = document.getElementById('fc-comments-count'); if (c) c.textContent = count || 0;
   } catch (e) { console.warn('[free-content] yorum sayısı hatası:', e); }
+}
+
+// ---- 1-5 Yıldız Puanlama ----
+let fcMyRating = 0;
+let fcRatingAvg = 0;
+let fcRatingCount = 0;
+
+async function loadFreeContentRating() {
+  try {
+    const { data, error } = await sb.from('free_content_ratings').select('rating,user_id').eq('content_id', FC_CONTENT_ID);
+    if (error) { console.warn('[free-content] puanlar okunamadı:', error.message); renderFreeContentStars(); return; }
+    const ratings = data || [];
+    fcRatingCount = ratings.length;
+    fcRatingAvg = fcRatingCount ? (ratings.reduce((s, r) => s + r.rating, 0) / fcRatingCount) : 0;
+    fcMyRating = currentUser ? (ratings.find(r => r.user_id === currentUser.id)?.rating || 0) : 0;
+  } catch (e) { console.warn('[free-content] puan yükleme hatası:', e); }
+  renderFreeContentStars();
+}
+
+function renderFreeContentStars() {
+  const wrap = document.getElementById('fc-star-rating');
+  const summary = document.getElementById('fc-rating-summary');
+  if (!wrap) return;
+  const displayVal = fcMyRating || Math.round(fcRatingAvg);
+  wrap.innerHTML = [1, 2, 3, 4, 5].map(i => `
+    <span onclick="submitFreeContentRating(${i})" style="cursor:pointer;color:${i <= displayVal ? '#f5b942' : 'var(--border)'};transition:color 0.15s" onmouseover="this.parentElement.querySelectorAll('span').forEach((s,idx)=>{s.style.color = idx < ${i} ? '#f5b942' : 'var(--border)'})" onmouseout="renderFreeContentStars()">★</span>
+  `).join('');
+  if (summary) {
+    summary.textContent = fcRatingCount
+      ? `${fcRatingAvg.toFixed(1)} / 5 (${fcRatingCount} oy)` + (fcMyRating ? ' · senin puanın: ' + fcMyRating : '')
+      : 'Henüz puan yok — ilk puanı sen ver!';
+  }
+}
+
+async function submitFreeContentRating(stars) {
+  if (!currentUser) { openAppSelector(); return; }
+  const prevMy = fcMyRating;
+  fcMyRating = stars;
+  renderFreeContentStars();
+  try {
+    const { error } = await sb.from('free_content_ratings').upsert(
+      { content_id: FC_CONTENT_ID, user_id: currentUser.id, rating: stars },
+      { onConflict: 'content_id,user_id' }
+    );
+    if (error) {
+      console.warn('[free-content] puan kaydedilemedi:', error.message);
+      fcMyRating = prevMy;
+      renderFreeContentStars();
+      return;
+    }
+    await loadFreeContentRating();
+  } catch (e) {
+    console.warn('[free-content] puan verme hatası:', e);
+    fcMyRating = prevMy;
+    renderFreeContentStars();
+  }
 }
 
 function openFreeContentViewer() {
