@@ -747,6 +747,38 @@ document.getElementById('pwa-manifest').href=URL.createObjectURL(mblob);
       </div>
     </div>
     <div id="srs-session-area"></div>
+
+    <div class="card" style="margin-top:14px">
+      <div class="section-title"><span class="dot" style="background:var(--accent2)"></span>📆 Tarih Aralığı Tekrarı</div>
+      <p style="font-size:0.76rem;color:var(--muted);margin-bottom:12px">Normal tekrar kartlarından bağımsız olarak, seçtiğin tarih aralığında öğrendiğin/işaretlediğin kelimeleri istediğin soru tipiyle pratik yap.</p>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px">
+        <button class="btn btn-sm" onclick="applyRangePreset('today')" style="background:var(--surface2);border:1px solid var(--border);color:var(--text)">Bugün</button>
+        <button class="btn btn-sm" onclick="applyRangePreset('1day')" style="background:var(--surface2);border:1px solid var(--border);color:var(--text)">Son 1 Gün</button>
+        <button class="btn btn-sm" onclick="applyRangePreset('1week')" style="background:var(--surface2);border:1px solid var(--border);color:var(--text)">Son 1 Hafta</button>
+        <button class="btn btn-sm" onclick="applyRangePreset('2weeks')" style="background:var(--surface2);border:1px solid var(--border);color:var(--text)">Son 2 Hafta</button>
+        <button class="btn btn-sm" onclick="applyRangePreset('1month')" style="background:var(--surface2);border:1px solid var(--border);color:var(--text)">Son 1 Ay</button>
+      </div>
+      <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;margin-bottom:12px">
+        <div>
+          <label style="font-size:0.7rem;color:var(--muted);display:block;margin-bottom:3px">Başlangıç</label>
+          <input type="date" id="range-start-date" style="padding:7px 10px;border-radius:8px;background:var(--surface2);border:1px solid var(--border);color:var(--text);font-size:0.8rem">
+        </div>
+        <div>
+          <label style="font-size:0.7rem;color:var(--muted);display:block;margin-bottom:3px">Bitiş</label>
+          <input type="date" id="range-end-date" style="padding:7px 10px;border-radius:8px;background:var(--surface2);border:1px solid var(--border);color:var(--text);font-size:0.8rem">
+        </div>
+        <div>
+          <label style="font-size:0.7rem;color:var(--muted);display:block;margin-bottom:3px">Soru Tipi</label>
+          <select id="range-quiztype-select" style="padding:7px 10px;border-radius:8px;background:var(--surface2);border:1px solid var(--border);color:var(--text);font-size:0.8rem">
+            <option value="flashcard">🔄 Çevirme Kart</option>
+            <option value="multichoice">☑️ Çoktan Seçmeli</option>
+            <option value="typing">⌨️ Yazarak Cevapla</option>
+          </select>
+        </div>
+        <button class="btn" onclick="startRangeReview()" style="background:rgba(200,169,110,0.15);border:1px solid var(--accent);color:var(--accent);padding:8px 18px">▶ Tekrarı Başlat</button>
+      </div>
+      <div id="range-session-area"></div>
+    </div>
     <div class="card" style="margin-top:14px">
       <div class="section-title"><span class="dot" style="background:var(--accent3)"></span>Tüm SRS Kartları</div>
       <div id="srs-all-cards" style="max-height:320px;overflow-y:auto"></div>
@@ -2841,6 +2873,94 @@ function checkSrsTyping(correct){
   if(diffWrap) diffWrap.innerHTML = window._srsDiffBtnsHtml;
 }
 
+// ═══════════════════════════════════════════════════════════════
+// TARİH ARALIĞI TEKRARI (SRS programından bağımsız pratik oturumu)
+// ═══════════════════════════════════════════════════════════════
+let rangeSession = null; // {pool, index, correct}
+
+function applyRangePreset(preset){
+  const today = new Date();
+  let start = new Date(today);
+  if(preset==='1day') start.setDate(start.getDate()-1);
+  else if(preset==='1week') start.setDate(start.getDate()-7);
+  else if(preset==='2weeks') start.setDate(start.getDate()-14);
+  else if(preset==='1month') start.setMonth(start.getMonth()-1);
+  // 'today' -> start = today (değişiklik yok)
+  const fmt = d => d.toISOString().slice(0,10);
+  document.getElementById('range-start-date').value = fmt(start);
+  document.getElementById('range-end-date').value = fmt(today);
+}
+
+function getWordsInDateRange(startStr, endStr){
+  const start = new Date(startStr+'T00:00:00');
+  const end = new Date(endStr+'T23:59:59');
+  const seen = new Set();
+  const pool = [];
+  Object.entries(state.dailyWords||{}).forEach(([dateKey, words])=>{
+    const d = new Date(dateKey+'T12:00:00');
+    if(d >= start && d <= end){
+      (words||[]).forEach(w=>{
+        if(seen.has(w.key)) return;
+        seen.add(w.key);
+        const [cat, idx] = w.key.split('_');
+        const wordObj = WORD_DB[cat] && WORD_DB[cat][parseInt(idx)];
+        if(wordObj) pool.push({key:w.key, cat, word:wordObj});
+      });
+    }
+  });
+  return pool;
+}
+
+function startRangeReview(){
+  const startVal = document.getElementById('range-start-date').value;
+  const endVal = document.getElementById('range-end-date').value;
+  const quizType = document.getElementById('range-quiztype-select').value;
+  if(!startVal || !endVal){ alert('Lütfen bir tarih aralığı seç (ya da hazır seçeneklerden birine tıkla).'); return; }
+  const pool = getWordsInDateRange(startVal, endVal).sort(()=>Math.random()-0.5);
+  if(!pool.length){ alert('Bu tarih aralığında işaretlenmiş/kaydedilmiş kelime bulunamadı.'); return; }
+  rangeSession = { pool, index:0, correct:0, quizType };
+  renderRangeCard();
+}
+
+function renderRangeCard(){
+  const area = document.getElementById('range-session-area');
+  if(!area) return;
+  if(!rangeSession){ area.innerHTML=''; return; }
+
+  if(rangeSession.index >= rangeSession.pool.length){
+    const pct = Math.round((rangeSession.correct/rangeSession.pool.length)*100);
+    area.innerHTML = `<div class="card" style="text-align:center;padding:26px;margin-top:6px">
+      <div style="font-size:2.2rem;margin-bottom:8px">🏁</div>
+      <div style="font-family:'Playfair Display',serif;font-size:1.15rem;font-weight:700;margin-bottom:6px">Tekrar tamamlandı!</div>
+      <div style="font-size:0.85rem;color:var(--muted)">${rangeSession.correct}/${rangeSession.pool.length} doğru (%${pct})</div>
+      <button class="btn" onclick="rangeSession=null;renderRangeCard()" style="margin-top:14px;background:rgba(200,169,110,0.15);border:1px solid var(--accent);color:var(--accent)">Kapat</button>
+    </div>`;
+    return;
+  }
+
+  const item = rangeSession.pool[rangeSession.index];
+  let cardHtml = '';
+  if(rangeSession.quizType==='multichoice') cardHtml = buildSrsMultichoiceHtml(item);
+  else if(rangeSession.quizType==='typing') cardHtml = buildSrsTypingHtml(item);
+  else cardHtml = buildSrsFlashcardHtml(item);
+
+  area.innerHTML = `<div class="card" style="margin-top:6px">
+    <div style="font-size:0.72rem;color:var(--muted);margin-bottom:10px">Kart ${rangeSession.index+1} / ${rangeSession.pool.length} &nbsp;·&nbsp; ✓ ${rangeSession.correct}</div>
+    ${cardHtml}
+    <div style="display:flex;gap:8px;margin-top:14px">
+      <button class="btn btn-ghost" style="flex:1;border-color:var(--danger);color:var(--danger)" onclick="answerRangeCard(false)">✗ Bilemedim</button>
+      <button class="btn" style="flex:1;background:rgba(110,200,155,0.15);border:1px solid var(--success);color:var(--success)" onclick="answerRangeCard(true)">✓ Bildim</button>
+    </div>
+  </div>`;
+}
+
+function answerRangeCard(correct){
+  if(!rangeSession) return;
+  if(correct) rangeSession.correct++;
+  rangeSession.index++;
+  renderRangeCard();
+}
+
 function rateSRS(key,rating){
   const card=state.srsCards[key];if(!card)return;
   const schedule = state.srsSchedule && state.srsSchedule.length ? state.srsSchedule : SRS_SCHEDULE_PRESETS.classic;
@@ -3197,8 +3317,15 @@ async function aiSuggestMeaning(auto=false){
 // garantilemeye çalışır (yanlışlıkla Türkçe gelirse otomatik yeniden dener).
 async function fetchSentencesForMeaning(word, meaning){
   const PROXY='https://empty-block-cfe3.ahmetyildirimm56.workers.dev/';
+  // ÖNEMLİ: AI servisine bağlam olarak HER ZAMAN Türkçe anlamı gönderiyoruz.
+  // EN modda İngilizce tanım metni gönderilirse worker bazen kafası karışıp
+  // örnek cümleleri yanlışlıkla Türkçe döndürüyordu. Türkçe anlam bağlamının
+  // her zaman güvenilir İngilizce cümle ürettiği doğrulandı.
+  const trHint = vLastAiData && (Array.isArray(vLastAiData.tr) ? vLastAiData.tr[0] : vLastAiData.tr);
+  const contextMeaning = trHint || meaning;
+
   const fetchOnce = () => fetch(PROXY,{method:'POST',headers:{'Content-Type':'application/json'},
-    body:JSON.stringify({word:word+' (meaning: '+meaning+')'})}).then(r=>r.json());
+    body:JSON.stringify({word:word+' (meaning: '+contextMeaning+')'})}).then(r=>r.json());
 
   let d = await fetchOnce();
   if(d.error) throw new Error(d.error);
@@ -4434,18 +4561,23 @@ async function removeFriendReq(reqId) {
 // ============================================================
 let activeDMFriendId = null;
 let activeDMFriendNick = null;
-let dmPollInterval = null;
+let dmRealtimeChannel = null;
 
 function openDM(friendId, friendNick) {
   activeDMFriendId = friendId;
   activeDMFriendNick = friendNick;
   switchTab('dm', null);
   renderDMPanel();
-  // Real-time polling
-  if (dmPollInterval) clearInterval(dmPollInterval);
-  dmPollInterval = setInterval(() => {
-    if (activeDMFriendId) loadDMMessages();
-  }, 4000);
+  loadDMMessages();
+
+  // Anlık mesajlaşma: polling yerine Supabase Realtime aboneliği
+  const dmKey = [currentUser.id, friendId].sort().join('_');
+  if (dmRealtimeChannel) { sb.removeChannel(dmRealtimeChannel); dmRealtimeChannel = null; }
+  dmRealtimeChannel = sb.channel('dm-'+dmKey)
+    .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'direct_messages', filter: 'dm_key=eq.'+dmKey }, () => {
+      if (activeDMFriendId) loadDMMessages();
+    })
+    .subscribe();
 }
 
 async function viewFriendProfile(friendId) {
@@ -4600,13 +4732,20 @@ async function sendDMImage(file) {
 }
 
 // ============================================================
-// FIX 7: Grup sohbeti real-time polling (madde 12)
+// Grup sohbeti anlık mesajlaşma (Supabase Realtime — polling değil)
 // ============================================================
-let groupChatInterval = null;
+let groupChatChannels = {}; // groupId -> realtime channel
 
 function startGroupChatPolling(groupId) {
-  if (groupChatInterval) clearInterval(groupChatInterval);
-  groupChatInterval = setInterval(() => loadGroupChat(groupId), 5000);
+  // İsim geriye dönük uyumluluk için korundu, artık polling değil
+  // gerçek zamanlı (Supabase Realtime) abonelik kuruyor.
+  if (groupChatChannels[groupId]) return; // zaten abone
+  const ch = sb.channel('group-chat-'+groupId)
+    .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'group_messages', filter: 'group_id=eq.'+groupId }, () => {
+      loadGroupChat(groupId);
+    })
+    .subscribe();
+  groupChatChannels[groupId] = ch;
 }
 
 // ============================================================
@@ -5536,6 +5675,7 @@ async function openGroupDetail(groupId){
       </div>
     `;
     loadGroupChat(groupId);
+    startGroupChatPolling(groupId);
   } catch(e){ content.innerHTML = `<div style="color:var(--danger);font-size:0.8rem;padding:10px">Hata: ${e.message}</div>`; }
 }
 
