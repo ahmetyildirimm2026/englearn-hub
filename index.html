@@ -719,6 +719,33 @@ document.getElementById('pwa-manifest').href=URL.createObjectURL(mblob);
       <div class="stat-card" style="--color:var(--accent)"><div class="stat-label">Toplam Kart</div><div class="stat-value" id="srs-total-count">0</div><div class="stat-sub">SRS'te</div></div>
       <div class="stat-card" style="--color:var(--success)"><div class="stat-label">Tamamlanan</div><div class="stat-value" id="srs-done-count">0</div><div class="stat-sub">bugün</div></div>
     </div>
+    <div class="card" style="margin-bottom:14px">
+      <div class="section-title" style="margin-bottom:10px"><span class="dot" style="background:var(--accent)"></span>Tekrar Ayarları</div>
+      <div style="display:flex;gap:14px;flex-wrap:wrap">
+        <div style="flex:1;min-width:180px">
+          <label style="font-size:0.72rem;color:var(--muted);display:block;margin-bottom:4px">📅 Tekrar Programı</label>
+          <select id="srs-schedule-select" onchange="changeSrsSchedule(this.value)" style="width:100%;padding:8px 10px;border-radius:8px;background:var(--surface2);border:1px solid var(--border);color:var(--text);font-family:'DM Sans',sans-serif;font-size:0.82rem">
+            <option value="classic">Klasik (1g / 3g / 1h / 1ay)</option>
+            <option value="intense">Yoğun (1g / 2g / 4g / 1h / 2h)</option>
+            <option value="ebbinghaus">Ebbinghaus (1g / 1h / 16g / 5h)</option>
+            <option value="weekly">Haftalık (1h / 2h / 3h / 1ay)</option>
+            <option value="monthly">Aylık (1ay / 2ay / 3ay)</option>
+            <option value="custom">Özel (gün sayılarını gir)</option>
+          </select>
+          <div id="srs-custom-days-wrap" style="display:none;margin-top:6px">
+            <input id="srs-custom-days-input" placeholder="örn: 2,5,10,20" oninput="saveCustomSrsSchedule(this.value)" style="width:100%;padding:7px 10px;border-radius:8px;background:var(--surface2);border:1px solid var(--border);color:var(--text);font-size:0.8rem">
+          </div>
+        </div>
+        <div style="flex:1;min-width:180px">
+          <label style="font-size:0.72rem;color:var(--muted);display:block;margin-bottom:4px">❓ Tekrar Soru Tipi</label>
+          <select id="srs-quiztype-select" onchange="changeSrsQuizType(this.value)" style="width:100%;padding:8px 10px;border-radius:8px;background:var(--surface2);border:1px solid var(--border);color:var(--text);font-family:'DM Sans',sans-serif;font-size:0.82rem">
+            <option value="flashcard">🔄 Çevirme Kart (klasik)</option>
+            <option value="multichoice">☑️ Çoktan Seçmeli</option>
+            <option value="typing">⌨️ Yazarak Cevapla</option>
+          </select>
+        </div>
+      </div>
+    </div>
     <div id="srs-session-area"></div>
     <div class="card" style="margin-top:14px">
       <div class="section-title"><span class="dot" style="background:var(--accent3)"></span>Tüm SRS Kartları</div>
@@ -1650,7 +1677,14 @@ const PHONETICS = {
 const DEFAULT_CAT_TARGETS = {medical:80,legal:45,diplomatic:35,academic:40,literary:35,technical:35,daily:30,phrasal:30};
 const CAT_LABELS = {medical:'🩺 Tıp',legal:'⚖️ Hukuk',diplomatic:'🌐 Diplomatik',academic:'🎓 Akademik',literary:'📖 Edebi',technical:'⚙️ Teknik',daily:'📅 Günlük',phrasal:'🔗 Phrasal Verbs'};
 const CAT_COLORS = {medical:'#7eb8c9',legal:'#c8a96e',diplomatic:'#9b7ec8',academic:'#6ec89b',literary:'#c87e6e',technical:'#c8c06e',daily:'#6ec8c0',phrasal:'#c86ea0'};
-const SRS_INTERVALS = [1,3,7,30]; // days
+const SRS_INTERVALS = [1,3,7,30]; // days (geriye dönük uyumluluk için varsayılan)
+const SRS_SCHEDULE_PRESETS = {
+  classic:   [1,3,7,30],
+  intense:   [1,2,4,7,14],
+  ebbinghaus:[1,7,16,35],
+  weekly:    [7,14,21,30],
+  monthly:   [30,60,90],
+};
 
 let state = {
   skills:{vocab:0,listen:0,trans:0,interp:0,write:0},
@@ -1674,10 +1708,23 @@ let state = {
   customSets:{}, // {cat: [{id, name, words:[{w,t,e,s}]}]}
   vocabGroups:[], // [{id, name}]
   vocabGroupAssign:{}, // {vocabId: [groupId, ...]}
+  srsSchedulePreset:'classic',
+  srsSchedule:[1,3,7,30],
+  srsQuizType:'flashcard',
+  srsCustomDays:'',
 };
+// Hesaba özgü sıfırlama için varsayılan state'in temiz bir kopyası
+const DEFAULT_STATE_SNAPSHOT = JSON.parse(JSON.stringify(state));
+function freshDefaultState(){ return JSON.parse(JSON.stringify(DEFAULT_STATE_SNAPSHOT)); }
+
+// Her Google hesabı için AYRI localStorage anahtarı — hesaplar arası veri
+// sızıntısını (bir hesabın kelimelerinin başka hesapta görünmesini) engeller.
+function stateStorageKey(){
+  return currentUser ? ('engHub4_' + currentUser.id) : 'engHub4_guest';
+}
 
 function loadState(){
-  try{const s=localStorage.getItem('engHub4');if(s){const p=JSON.parse(s);state={...state,...p};if(!state.catTargets)state.catTargets={...DEFAULT_CAT_TARGETS};if(!state.srsCards)state.srsCards={};if(!state.vocabGroups)state.vocabGroups=[];if(!state.vocabGroupAssign)state.vocabGroupAssign={};if(!state.customSets)state.customSets={};}}catch(e){}
+  try{const s=localStorage.getItem(stateStorageKey());if(s){const p=JSON.parse(s);state={...state,...p};if(!state.catTargets)state.catTargets={...DEFAULT_CAT_TARGETS};if(!state.srsCards)state.srsCards={};if(!state.vocabGroups)state.vocabGroups=[];if(!state.vocabGroupAssign)state.vocabGroupAssign={};if(!state.customSets)state.customSets={};}}catch(e){}
   // Load theme
   const savedTheme=localStorage.getItem('engHub-theme')||'dark';
   document.documentElement.setAttribute('data-theme',savedTheme);
@@ -1726,7 +1773,7 @@ function updateThemeUI(theme){
   }
 }
 // saveState is defined below as async (Supabase sync)
-function _saveStateLocal(){try{localStorage.setItem('engHub4',JSON.stringify(state));}catch(e){}}
+function _saveStateLocal(){try{localStorage.setItem(stateStorageKey(),JSON.stringify(state));}catch(e){}}
 
 // ===== TTS =====
 // ══ TTS — Google Translate audio (Worker proxy) + Web Speech fallback ══
@@ -2630,12 +2677,54 @@ function getDueCards(){
     }).filter(Boolean);
 }
 
+function formatDaysLabel(days){
+  if(days % 30 === 0 && days >= 30) return (days/30)+' ay sonra';
+  if(days % 7 === 0 && days >= 7) return (days/7)+' hafta sonra';
+  return days+' gün sonra';
+}
+
+function changeSrsSchedule(preset){
+  state.srsSchedulePreset = preset;
+  if(preset === 'custom'){
+    document.getElementById('srs-custom-days-wrap').style.display = 'block';
+    const days = (state.srsCustomDays||'').split(',').map(s=>parseInt(s.trim())).filter(n=>!isNaN(n)&&n>0);
+    state.srsSchedule = days.length ? days : [1,3,7,30];
+  } else {
+    document.getElementById('srs-custom-days-wrap').style.display = 'none';
+    state.srsSchedule = SRS_SCHEDULE_PRESETS[preset] || SRS_SCHEDULE_PRESETS.classic;
+  }
+  saveState();
+  renderSRS();
+}
+
+function saveCustomSrsSchedule(val){
+  state.srsCustomDays = val;
+  const days = val.split(',').map(s=>parseInt(s.trim())).filter(n=>!isNaN(n)&&n>0);
+  if(days.length){ state.srsSchedule = days; saveState(); renderSRS(); }
+}
+
+function changeSrsQuizType(type){
+  state.srsQuizType = type;
+  saveState();
+  renderSRS();
+}
+
 function renderSRS(){
   const due=getDueCards();
   const total=Object.keys(state.srsCards).length;
   document.getElementById('srs-due-count').textContent=due.length;
   document.getElementById('srs-total-count').textContent=total;
   document.getElementById('srs-done-count').textContent=state.srsDoneToday||0;
+
+  // Ayar kutucuklarını mevcut state ile senkronla
+  const schedSel = document.getElementById('srs-schedule-select');
+  if(schedSel && schedSel.value !== state.srsSchedulePreset) schedSel.value = state.srsSchedulePreset || 'classic';
+  const qtSel = document.getElementById('srs-quiztype-select');
+  if(qtSel && qtSel.value !== state.srsQuizType) qtSel.value = state.srsQuizType || 'flashcard';
+  const customWrap = document.getElementById('srs-custom-days-wrap');
+  if(customWrap) customWrap.style.display = (state.srsSchedulePreset === 'custom') ? 'block' : 'none';
+  const customInput = document.getElementById('srs-custom-days-input');
+  if(customInput && document.activeElement !== customInput) customInput.value = state.srsCustomDays || '';
 
   const area=document.getElementById('srs-session-area');
   if(!due.length){
@@ -2646,8 +2735,27 @@ function renderSRS(){
     </div>`;
   } else {
     const item=due[0];
-    const phonetic=PHONETICS[item.word.w.toLowerCase()]||PHONETICS[item.word.w]||'';
-    const nextDays=SRS_INTERVALS;
+    const schedule = state.srsSchedule && state.srsSchedule.length ? state.srsSchedule : SRS_SCHEDULE_PRESETS.classic;
+    const diffBtnsHtml = `
+      <div style="font-size:0.75rem;color:var(--muted);text-align:center;margin-bottom:10px">Ne kadar kolaydı?</div>
+      <div class="srs-difficulty-btns">
+        <button class="btn btn-danger" onclick="rateSRS('${item.key}',0)">😰 Hiç bilmedim<div style="font-size:0.65rem;opacity:0.7;margin-top:2px">${formatDaysLabel(schedule[0])}</div></button>
+        <button class="btn btn-ghost" style="border-color:var(--accent)" onclick="rateSRS('${item.key}',1)">😅 Zor<div style="font-size:0.65rem;opacity:0.7;margin-top:2px">${formatDaysLabel(schedule[Math.min(1,schedule.length-1)])}</div></button>
+        <button class="btn btn-ghost" style="border-color:var(--accent2)" onclick="rateSRS('${item.key}',2)">🙂 Orta<div style="font-size:0.65rem;opacity:0.7;margin-top:2px">${formatDaysLabel(schedule[Math.min(2,schedule.length-1)])}</div></button>
+        <button class="btn btn-ghost" style="border-color:var(--success);color:var(--success)" onclick="rateSRS('${item.key}',3)">😎 Kolay!<div style="font-size:0.65rem;opacity:0.7;margin-top:2px">${formatDaysLabel(schedule[Math.min(3,schedule.length-1)])}</div></button>
+      </div>
+      <div style="font-size:0.7rem;color:var(--muted);text-align:center;margin-top:10px">Seviye: ${item.data.level}/4 &nbsp;·&nbsp; ${CAT_LABELS[item.cat]}</div>`;
+
+    const quizType = state.srsQuizType || 'flashcard';
+    let cardHtml = '';
+    if(quizType === 'multichoice'){
+      cardHtml = buildSrsMultichoiceHtml(item);
+    } else if(quizType === 'typing'){
+      cardHtml = buildSrsTypingHtml(item);
+    } else {
+      cardHtml = buildSrsFlashcardHtml(item);
+    }
+
     area.innerHTML=`<div class="card">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;flex-wrap:wrap;gap:8px">
         <div class="section-title" style="margin:0"><span class="dot" style="background:var(--danger)"></span>Tekrar Zamanı — <span style="color:var(--danger)">${due.length}</span> kart bekliyor</div>
@@ -2656,33 +2764,87 @@ function renderSRS(){
           <button class="tts-btn btn-sm" onclick="speak('${item.word.w.replace(/'/g,"\\'")}',null)" style="font-size:0.75rem;padding:5px 10px">🔊 Dinle</button>
         </div>
       </div>
-      <div class="srs-card" onclick="this.querySelector('.srs-back').style.display=this.querySelector('.srs-back').style.display==='none'?'block':'none'">
-        <div class="srs-word">${item.word.w}</div>
-        ${phonetic?`<div style="font-family:'DM Mono',monospace;font-size:0.85rem;color:var(--accent3);margin-top:4px">${phonetic}</div>`:''}
-        <div style="font-size:0.75rem;color:var(--muted);margin-top:8px">Türkçesini hatırlıyor musun? Tıkla →</div>
-        <div class="srs-back" style="display:none;margin-top:14px;padding-top:14px;border-top:1px solid var(--border)">
-          <div style="font-family:'Playfair Display',serif;font-size:1.3rem;font-weight:700;color:var(--text);margin-bottom:6px">${item.word.t}</div>
-          <div style="font-size:0.8rem;color:var(--muted);font-style:italic">"${item.word.e||''}"</div>
-        </div>
-      </div>
-      <div style="font-size:0.75rem;color:var(--muted);text-align:center;margin-bottom:10px">Ne kadar kolaydı?</div>
-      <div class="srs-difficulty-btns">
-        <button class="btn btn-danger" onclick="rateSRS('${item.key}',0)">😰 Hiç bilmedim<div style="font-size:0.65rem;opacity:0.7;margin-top:2px">1 gün sonra</div></button>
-        <button class="btn btn-ghost" style="border-color:var(--accent)" onclick="rateSRS('${item.key}',1)">😅 Zor<div style="font-size:0.65rem;opacity:0.7;margin-top:2px">3 gün sonra</div></button>
-        <button class="btn btn-ghost" style="border-color:var(--accent2)" onclick="rateSRS('${item.key}',2)">🙂 Orta<div style="font-size:0.65rem;opacity:0.7;margin-top:2px">7 gün sonra</div></button>
-        <button class="btn btn-ghost" style="border-color:var(--success);color:var(--success)" onclick="rateSRS('${item.key}',3)">😎 Kolay!<div style="font-size:0.65rem;opacity:0.7;margin-top:2px">30 gün sonra</div></button>
-      </div>
-      <div style="font-size:0.7rem;color:var(--muted);text-align:center;margin-top:10px">Seviye: ${item.data.level}/4 &nbsp;·&nbsp; ${CAT_LABELS[item.cat]}</div>
+      ${cardHtml}
+      <div id="srs-diff-btns">${quizType==='flashcard' ? diffBtnsHtml : ''}</div>
     </div>`;
+    // multichoice/typing: zorluk butonlarını cevap verilene kadar gizli tut
+    window._srsDiffBtnsHtml = diffBtnsHtml;
   }
 
   // All cards list
   renderSRSList();
 }
 
+function buildSrsFlashcardHtml(item){
+  const phonetic=PHONETICS[item.word.w.toLowerCase()]||PHONETICS[item.word.w]||'';
+  return `<div class="srs-card" onclick="this.querySelector('.srs-back').style.display=this.querySelector('.srs-back').style.display==='none'?'block':'none'">
+    <div class="srs-word">${item.word.w}</div>
+    ${phonetic?`<div style="font-family:'DM Mono',monospace;font-size:0.85rem;color:var(--accent3);margin-top:4px">${phonetic}</div>`:''}
+    <div style="font-size:0.75rem;color:var(--muted);margin-top:8px">Türkçesini hatırlıyor musun? Tıkla →</div>
+    <div class="srs-back" style="display:none;margin-top:14px;padding-top:14px;border-top:1px solid var(--border)">
+      <div style="font-family:'Playfair Display',serif;font-size:1.3rem;font-weight:700;color:var(--text);margin-bottom:6px">${item.word.t}</div>
+      <div style="font-size:0.8rem;color:var(--muted);font-style:italic">"${item.word.e||''}"</div>
+    </div>
+  </div>`;
+}
+
+function buildSrsMultichoiceHtml(item){
+  // Yanlış şıklar: aynı ya da başka kategorilerden rastgele 3 anlam
+  const allWords = Object.values(WORD_DB).flat();
+  const distractors = allWords.filter(w=>w.t!==item.word.t).sort(()=>Math.random()-0.5).slice(0,3).map(w=>w.t);
+  const options = [...distractors, item.word.t].sort(()=>Math.random()-0.5);
+  const correctEsc = item.word.t.replace(/'/g,"\\'").replace(/"/g,'&quot;');
+  return `<div class="srs-card" style="cursor:default">
+    <div class="srs-word">${item.word.w}</div>
+    <div style="font-size:0.75rem;color:var(--muted);margin:8px 0 14px">Doğru Türkçe anlamı seç:</div>
+    <div id="srs-mc-options" style="display:flex;flex-direction:column;gap:8px">
+      ${options.map(o=>`<button onclick="answerSrsMultichoice(this,'${o.replace(/'/g,"\\'").replace(/"/g,'&quot;')}','${correctEsc}')" style="padding:10px 14px;border-radius:10px;border:1px solid var(--border);background:var(--surface2);color:var(--text);cursor:pointer;text-align:left;font-family:'DM Sans',sans-serif;font-size:0.85rem">${o}</button>`).join('')}
+    </div>
+  </div>`;
+}
+
+function answerSrsMultichoice(btn, chosen, correct){
+  const wrap = document.getElementById('srs-mc-options');
+  const isCorrect = chosen === correct;
+  wrap.querySelectorAll('button').forEach(b=>{
+    b.disabled = true;
+    if(b.textContent === correct) { b.style.background='rgba(110,200,155,0.2)'; b.style.borderColor='var(--success)'; }
+    else if(b === btn && !isCorrect) { b.style.background='rgba(220,80,80,0.15)'; b.style.borderColor='var(--danger)'; }
+  });
+  const diffWrap = document.getElementById('srs-diff-btns');
+  if(diffWrap) diffWrap.innerHTML = window._srsDiffBtnsHtml;
+}
+
+function buildSrsTypingHtml(item){
+  return `<div class="srs-card" style="cursor:default">
+    <div class="srs-word">${item.word.w}</div>
+    <div style="font-size:0.75rem;color:var(--muted);margin:8px 0 12px">Türkçe anlamını yaz:</div>
+    <input id="srs-typing-input" placeholder="Türkçe anlam..." style="width:100%;padding:10px 12px;border-radius:10px;border:1px solid var(--border);background:var(--surface2);color:var(--text);font-size:0.9rem;text-align:center" onkeydown="if(event.key==='Enter')checkSrsTyping('${item.word.t.replace(/'/g,"\\'").replace(/"/g,'&quot;')}')">
+    <button class="btn" onclick="checkSrsTyping('${item.word.t.replace(/'/g,"\\'").replace(/"/g,'&quot;')}')" style="margin-top:10px;width:100%;background:rgba(200,169,110,0.15);border:1px solid var(--accent);color:var(--accent)">Kontrol Et</button>
+    <div id="srs-typing-result" style="margin-top:10px;font-size:0.85rem"></div>
+  </div>`;
+}
+
+function checkSrsTyping(correct){
+  const input = document.getElementById('srs-typing-input');
+  const val = (input?.value||'').trim().toLowerCase();
+  const correctParts = correct.toLowerCase().split(/[\/,]/).map(s=>s.trim());
+  const isCorrect = correctParts.some(p=>p && (val===p || p.includes(val) && val.length>2));
+  const resultEl = document.getElementById('srs-typing-result');
+  if(resultEl){
+    resultEl.innerHTML = isCorrect
+      ? `<span style="color:var(--success)">✓ Doğru! (${correct})</span>`
+      : `<span style="color:var(--danger)">✗ Doğrusu: ${correct}</span>`;
+  }
+  if(input) input.disabled = true;
+  const diffWrap = document.getElementById('srs-diff-btns');
+  if(diffWrap) diffWrap.innerHTML = window._srsDiffBtnsHtml;
+}
+
 function rateSRS(key,rating){
   const card=state.srsCards[key];if(!card)return;
-  const days=SRS_INTERVALS[Math.min(rating,3)];
+  const schedule = state.srsSchedule && state.srsSchedule.length ? state.srsSchedule : SRS_SCHEDULE_PRESETS.classic;
+  const days=schedule[Math.min(rating, schedule.length-1)];
   card.level=Math.max(0,Math.min(4,rating));
   card.nextReview=Date.now()+days*24*60*60*1000;
   card.lastReviewed=Date.now();
@@ -2773,10 +2935,11 @@ function renderRecentLog(){
 // ===== WORD TARGET =====
 function renderWordTarget(){
   const goal=state.weeklyWordGoal||300;
-  const known=Object.values(state.wordStatuses).filter(v=>v==='known').length;
+  const known=getWeeklyKnownCount();
   const pct=Math.min(100,Math.round((known/goal)*100));
   const rem=Math.max(0,goal-known);
-  const avg=state.streak>0?Math.round(known/Math.max(1,state.streak)):0;
+  const daysIntoWeek = Math.min(7, Math.floor((Date.now()-getMondayOfWeek(new Date()).getTime())/86400000)+1);
+  const avg=Math.round(known/Math.max(1,daysIntoWeek));
 
   const circ=232.48;
   const ring=document.getElementById('weekly-ring');
@@ -3030,6 +3193,33 @@ async function aiSuggestMeaning(auto=false){
   btn.disabled = false;
 }
 
+// Ortak, sağlam örnek cümle çekme fonksiyonu: her zaman İngilizce cümle
+// garantilemeye çalışır (yanlışlıkla Türkçe gelirse otomatik yeniden dener).
+async function fetchSentencesForMeaning(word, meaning){
+  const PROXY='https://empty-block-cfe3.ahmetyildirimm56.workers.dev/';
+  const fetchOnce = () => fetch(PROXY,{method:'POST',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({word:word+' (meaning: '+meaning+')'})}).then(r=>r.json());
+
+  let d = await fetchOnce();
+  if(d.error) throw new Error(d.error);
+
+  const examples = [d.e1, d.e2, d.e3].filter(Boolean);
+  if(examples.length && examples.every(looksLikeTurkish)){
+    const retry = await fetchOnce();
+    if(!retry.error && [retry.e1, retry.e2, retry.e3].filter(Boolean).some(t=>!looksLikeTurkish(t))){
+      d = retry;
+    }
+  }
+  return d;
+}
+
+function looksLikeTurkish(text){
+  if(!text) return false;
+  const turkishChars = (text.match(/[çğıöşüÇĞİÖŞÜ]/g) || []).length;
+  const turkishWords = /\b(ve|bir|için|ile|olarak|değil|bu|çok|gibi|kadar)\b/i.test(text);
+  return turkishChars >= 2 || turkishWords;
+}
+
 function renderMeaningChips(data, word){
   const sugBox = document.getElementById('v-ai-suggestions');
   const isTR = vMeaningMode === 'tr';
@@ -3087,11 +3277,22 @@ function renderMeaningChips(data, word){
     ).join('');
   };
 
-  const sentHtml = '<div id="v-sense-sentences">'
-    + window._makeSentRows(e1,e2,e3) + '</div>';
+  const sentHtml = '<div id="v-sense-sentences"><div style="color:var(--muted);font-size:0.72rem;font-style:italic">⏳ Cümleler yükleniyor...</div></div>';
 
   sugBox.innerHTML = toggleHtml + chipsHtml + sentHtml
     + '<div style="font-size:0.62rem;color:var(--muted);margin-top:5px">✦ '+src+' · kategori: '+data.category+'</div>';
+
+  // Varsayılan (ilk) anlam için her zaman taze, garantili İngilizce
+  // örnek cümle çek — mod değişse bile bayat/yanlış-dil veri kalmasın.
+  fetchSentencesForMeaning(wordForFetch, meanings[0]).then(d=>{
+    const sentEl = document.getElementById('v-sense-sentences');
+    if(!sentEl) return;
+    sentEl.innerHTML = window._makeSentRows(d.e1||'', d.e2||'', d.e3||'');
+    if(d.e1 && !document.getElementById('v-example').value) document.getElementById('v-example').value = d.e1;
+  }).catch(()=>{
+    const sentEl = document.getElementById('v-sense-sentences');
+    if(sentEl) sentEl.innerHTML = '<div style="font-size:0.72rem;color:var(--muted)">Cümle yüklenemedi.</div>';
+  });
 }
 
 function switchMeaningMode(mode){
@@ -3121,23 +3322,7 @@ async function selectMeaningAndFetchSentences(btn, word, meaning){
   sentEl.innerHTML='<div style="color:var(--muted);font-size:0.72rem;font-style:italic">⏳ Bu anlam için cümleler yükleniyor...</div>';
 
   try{
-    const PROXY='https://empty-block-cfe3.ahmetyildirimm56.workers.dev/';
-    const fetchSentences = () => fetch(PROXY,{method:'POST',headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({word:word+' (meaning: '+meaning+')'})}).then(r=>r.json());
-
-    let d = await fetchSentences();
-    if(d.error) throw new Error(d.error);
-
-    // Örnek cümleler İngilizce olmalı; bazen AI servisi yanlışlıkla
-    // Türkçe döndürüyor. Tespit edilirse bir kez daha dener.
-    const examples = [d.e1, d.e2, d.e3].filter(Boolean);
-    if(examples.length && examples.every(looksLikeTurkish)){
-      const retry = await fetchSentences();
-      if(!retry.error && [retry.e1, retry.e2, retry.e3].filter(Boolean).some(t=>!looksLikeTurkish(t))){
-        d = retry;
-      }
-    }
-
+    const d = await fetchSentencesForMeaning(word, meaning);
     sentEl.innerHTML=window._makeSentRows(d.e1||'',d.e2||'',d.e3||'');
     // update example field
     if(d.e1) document.getElementById('v-example').value=d.e1;
@@ -3147,15 +3332,6 @@ async function selectMeaningAndFetchSentences(btn, word, meaning){
   } catch(e){
     sentEl.innerHTML='<div style="color:var(--muted);font-size:0.72rem">Cümle yüklenemedi.</div>';
   }
-}
-
-// Basit sezgisel kontrol: metin İngilizce örnek cümle yerine
-// Türkçe metin mi geldi tespit eder (Türkçe'ye özgü karakter/ek yoğunluğu).
-function looksLikeTurkish(text){
-  if(!text) return false;
-  const turkishChars = (text.match(/[çğıöşüÇĞİÖŞÜ]/g) || []).length;
-  const turkishWords = /\b(ve|bir|için|ile|olarak|değil|bu|çok|gibi|kadar)\b/i.test(text);
-  return turkishChars >= 2 || turkishWords;
 }
 
 function selectMeaning(btn){
@@ -3650,6 +3826,9 @@ function showApp(user) {
 
 // ===== SUPABASE DATA SYNC =====
 async function loadUserData(userId) {
+  // Her hesap için önce state'i sıfırla — bir önceki oturumdan (farklı
+  // hesap olabilir) kalan bellek içi veri asla yeni hesaba karışmasın.
+  state = freshDefaultState();
   try {
     const { data, error } = await sb.from('user_data').select('data').eq('user_id', userId).single();
     if (error && error.code !== 'PGRST116') {
@@ -3663,14 +3842,16 @@ async function loadUserData(userId) {
       if (!state.srsCards) state.srsCards = {};
       if (!state.dailyWords) state.dailyWords = {};
     } else {
-      // New user or no cloud data — load from localStorage
-      const local = localStorage.getItem('engHub4');
+      // Bulutta kayıt yok (yeni hesap ya da henüz hiç kelime kaydetmemiş).
+      // SADECE bu hesaba ait local yedek varsa onu kullan — başka bir
+      // hesabın verisini ASLA miras almasın.
+      const local = localStorage.getItem('engHub4_' + userId);
       if (local) { try { const p = JSON.parse(local); state = { ...state, ...p }; } catch(e2) {} }
     }
   } catch(e) {
     console.warn('loadUserData exception:', e.message);
-    // Fallback to localStorage
-    const local = localStorage.getItem('engHub4');
+    // Yalnızca bu hesabın kendi yerel yedeğine düş — başka hesaba düşme
+    const local = localStorage.getItem('engHub4_' + userId);
     if (local) { try { const p = JSON.parse(local); state = { ...state, ...p }; } catch(e2) {} }
   }
   initDate();
@@ -3685,8 +3866,8 @@ async function loadUserData(userId) {
 }
 
 async function saveState() {
-  // Always save to localStorage as backup
-  try { localStorage.setItem('engHub4', JSON.stringify(state)); } catch(e) {}
+  // Always save to localStorage as backup (hesaba özgü anahtar)
+  try { localStorage.setItem(stateStorageKey(), JSON.stringify(state)); } catch(e) {}
   // Save to Supabase if logged in
   if (!currentUser) return;
   try {
@@ -3723,6 +3904,31 @@ function recordDailyWord(key, wordObj) {
   if (!state.dailyWords[today].find(w => w.key === key)) {
     state.dailyWords[today].push({ key, w: wordObj.w, t: wordObj.t });
   }
+}
+
+// ===== HAFTALIK HEDEF (Pazartesi–Pazar bazlı, otomatik sıfırlanır) =====
+function getMondayOfWeek(d){
+  const date = new Date(d);
+  const day = date.getDay(); // 0=Paz,1=Pzt,...6=Cmt
+  const diff = (day===0 ? -6 : 1-day);
+  date.setDate(date.getDate()+diff);
+  date.setHours(0,0,0,0);
+  return date;
+}
+
+function getWeeklyKnownCount(){
+  const monday = getMondayOfWeek(new Date());
+  const keysThisWeek = new Set();
+  for(let i=0;i<7;i++){
+    const d = new Date(monday); d.setDate(monday.getDate()+i);
+    const dateKey = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+    const dayData = state.dailyWords && state.dailyWords[dateKey];
+    if(dayData) dayData.forEach(w=>keysThisWeek.add(w.key));
+  }
+  // Sadece hâlâ "biliniyor" olarak işaretli olanları say (işareti kaldırılmışsa düşer)
+  let count=0;
+  keysThisWeek.forEach(k=>{ if(state.wordStatuses[k]==='known') count++; });
+  return count;
 }
 
 // Override setWStatus to track daily words
@@ -4804,21 +5010,27 @@ function _checkStreakComplete(prevStreak, prevDate) {
 // ===== EXPORT =====
 function exportCSV(){
   const rows=[['Kelime','Türkçe','Eş Anlamlar','Kategori','Durum','Örnek Cümle 1','Örnek Cümle 2','Örnek Cümle 3']];
-  Object.entries(WORD_DB).forEach(([cat,words])=>{
-    words.forEach((w,i)=>{
-      const key=cat+'_'+i;
-      const status=state.wordStatuses[key]||'unknown';
-      rows.push([
-        w.w, w.t,
-        (w.s||[]).join(' / '),
-        CAT_LABELS[cat]||cat,
-        status==='known'?'✓ Biliniyor':status==='learning'?'~ Öğreniliyor':'○ Bilinmiyor',
-        w.e1||w.e||'', w.e2||'', w.e3||''
-      ]);
-    });
+  // PDF dışa aktarımıyla aynı mantık: sadece işaretlenmiş (biliniyor/öğreniliyor)
+  // kelimeler — tüm hazır sözlük değil.
+  const marked = Object.entries(state.wordStatuses || {}).filter(([k,v]) => v==='known' || v==='learning');
+  marked.forEach(([key,status])=>{
+    const [cat, idx] = key.split('_');
+    const w = WORD_DB[cat] && WORD_DB[cat][parseInt(idx)];
+    if(!w) return;
+    rows.push([
+      w.w, w.t,
+      (w.s||[]).join(' / '),
+      CAT_LABELS[cat]||cat,
+      status==='known'?'✓ Biliniyor':'~ Öğreniliyor',
+      w.e1||w.e||'', w.e2||'', w.e3||''
+    ]);
+  });
+  // Kişisel Banka'ya kullanıcının kendi eklediği kelimeler de dahil edilsin
+  (state.vocab||[]).forEach(v=>{
+    rows.push([v.w, v.m, '', v.field||'Kişisel Banka', '✓ Eklendi', v.e||'', '', '']);
   });
   const csv=rows.map(r=>r.map(c=>'"'+String(c).replace(/"/g,'""')+'"').join(',')).join('\n');
-  const blob=new Blob(['﻿'+csv],{type:'text/csv;charset=utf-8'});
+  const blob=new Blob(['\ufeff'+csv],{type:'text/csv;charset=utf-8'});
   const a=document.createElement('a');
   a.href=URL.createObjectURL(blob);
   a.download='englearn-hub-kelimeler.csv';
