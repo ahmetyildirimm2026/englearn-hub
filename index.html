@@ -3315,26 +3315,32 @@ async function aiSuggestMeaning(auto=false){
 
 // Ortak, sağlam örnek cümle çekme fonksiyonu: her zaman İngilizce cümle
 // garantilemeye çalışır (yanlışlıkla Türkçe gelirse otomatik yeniden dener).
-async function fetchSentencesForMeaning(word, meaning){
+async function fetchSentencesForMeaning(word, meaning, mode){
   const PROXY='https://empty-block-cfe3.ahmetyildirimm56.workers.dev/';
-  // ÖNEMLİ: AI servisine bağlam olarak HER ZAMAN Türkçe anlamı gönderiyoruz.
-  // EN modda İngilizce tanım metni gönderilirse worker bazen kafası karışıp
-  // örnek cümleleri yanlışlıkla Türkçe döndürüyordu. Türkçe anlam bağlamının
-  // her zaman güvenilir İngilizce cümle ürettiği doğrulandı.
-  const trHint = vLastAiData && (Array.isArray(vLastAiData.tr) ? vLastAiData.tr[0] : vLastAiData.tr);
-  const contextMeaning = trHint || meaning;
+  // Örnek cümle dili, seçili anlam moduyla (TR/EN) eşleşmeli:
+  // Türkçe anlama bakılıyorsa Türkçe örnek, İngilizce anlama
+  // bakılıyorsa İngilizce örnek gelmeli.
+  const targetLang = mode || vMeaningMode || 'tr';
 
   const fetchOnce = () => fetch(PROXY,{method:'POST',headers:{'Content-Type':'application/json'},
-    body:JSON.stringify({word:word+' (meaning: '+contextMeaning+')'})}).then(r=>r.json());
+    body:JSON.stringify({word:word+' (meaning: '+meaning+')'})}).then(r=>r.json());
 
   let d = await fetchOnce();
   if(d.error) throw new Error(d.error);
 
   const examples = [d.e1, d.e2, d.e3].filter(Boolean);
-  if(examples.length && examples.every(looksLikeTurkish)){
+  const mismatch = targetLang === 'tr'
+    ? (examples.length && examples.every(t=>!looksLikeTurkish(t)))   // TR bekleniyor ama hiçbiri Türkçe değil
+    : (examples.length && examples.some(looksLikeTurkish));           // EN bekleniyor ama Türkçe karışmış
+
+  if(mismatch){
     const retry = await fetchOnce();
-    if(!retry.error && [retry.e1, retry.e2, retry.e3].filter(Boolean).some(t=>!looksLikeTurkish(t))){
-      d = retry;
+    if(!retry.error){
+      const retryExamples = [retry.e1, retry.e2, retry.e3].filter(Boolean);
+      const retryOk = targetLang === 'tr'
+        ? retryExamples.some(t=>looksLikeTurkish(t))
+        : retryExamples.every(t=>!looksLikeTurkish(t));
+      if(retryOk) d = retry;
     }
   }
   return d;
@@ -3411,7 +3417,7 @@ function renderMeaningChips(data, word){
 
   // Varsayılan (ilk) anlam için her zaman taze, garantili İngilizce
   // örnek cümle çek — mod değişse bile bayat/yanlış-dil veri kalmasın.
-  fetchSentencesForMeaning(wordForFetch, meanings[0]).then(d=>{
+  fetchSentencesForMeaning(wordForFetch, meanings[0], isTR ? 'tr' : 'en').then(d=>{
     const sentEl = document.getElementById('v-sense-sentences');
     if(!sentEl) return;
     sentEl.innerHTML = window._makeSentRows(d.e1||'', d.e2||'', d.e3||'');
@@ -3449,12 +3455,16 @@ async function selectMeaningAndFetchSentences(btn, word, meaning){
   sentEl.innerHTML='<div style="color:var(--muted);font-size:0.72rem;font-style:italic">⏳ Bu anlam için cümleler yükleniyor...</div>';
 
   try{
-    const d = await fetchSentencesForMeaning(word, meaning);
+    const d = await fetchSentencesForMeaning(word, meaning, vMeaningMode);
     sentEl.innerHTML=window._makeSentRows(d.e1||'',d.e2||'',d.e3||'');
     // update example field
     if(d.e1) document.getElementById('v-example').value=d.e1;
-    if([d.e1,d.e2,d.e3].filter(Boolean).every(looksLikeTurkish)){
-      sentEl.innerHTML += '<div style="font-size:0.66rem;color:var(--danger);margin-top:4px">⚠ Örnek cümleler beklenmedik şekilde Türkçe geldi — AI servisinin yanıtı tutarsız olabilir.</div>';
+    const gotExamples = [d.e1,d.e2,d.e3].filter(Boolean);
+    const stillMismatched = vMeaningMode==='tr'
+      ? gotExamples.length && gotExamples.every(t=>!looksLikeTurkish(t))
+      : gotExamples.length && gotExamples.some(looksLikeTurkish);
+    if(stillMismatched){
+      sentEl.innerHTML += '<div style="font-size:0.66rem;color:var(--danger);margin-top:4px">⚠ Örnek cümle dili beklenenle uyuşmuyor olabilir — AI servisinin yanıtı tutarsız olabilir.</div>';
     }
   } catch(e){
     sentEl.innerHTML='<div style="color:var(--muted);font-size:0.72rem">Cümle yüklenemedi.</div>';
@@ -4570,12 +4580,13 @@ function openDM(friendId, friendNick) {
   renderDMPanel();
   loadDMMessages();
 
-  // Anlık mesajlaşma: polling yerine Supabase Realtime aboneliği
+  // Anlık mesajlaşma: polling yerine Supabase Realtime aboneliği,
+  // gelen mesaj doğrudan eklenir (tam yeniden yükleme yapılmaz — gecikmeyi azaltır)
   const dmKey = [currentUser.id, friendId].sort().join('_');
   if (dmRealtimeChannel) { sb.removeChannel(dmRealtimeChannel); dmRealtimeChannel = null; }
   dmRealtimeChannel = sb.channel('dm-'+dmKey)
-    .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'direct_messages', filter: 'dm_key=eq.'+dmKey }, () => {
-      if (activeDMFriendId) loadDMMessages();
+    .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'direct_messages', filter: 'dm_key=eq.'+dmKey }, (payload) => {
+      if (activeDMFriendId) appendDMMessage(payload.new);
     })
     .subscribe();
 }
@@ -4662,6 +4673,27 @@ function isImageSafe(file) {
   return true;
 }
 
+let _dmRenderedIds = new Set();
+
+function renderDMMessageHtml(m){
+  const isMe = m.sender_id === currentUser.id;
+  return `<div style="display:flex;flex-direction:column;align-items:${isMe?'flex-end':'flex-start'};gap:2px">
+      <span style="font-size:0.6rem;color:var(--muted);padding:0 10px">${isMe?'Sen':m.sender_nick} · ${new Date(m.sent_at).toLocaleTimeString('tr-TR',{hour:'2-digit',minute:'2-digit'})}</span>
+      ${m.image_url ? `<img src="${m.image_url}" style="max-width:200px;border-radius:10px;border:1px solid var(--border)">` : ''}
+      ${m.message ? `<div style="max-width:75%;padding:9px 14px;border-radius:${isMe?'18px 18px 4px 18px':'18px 18px 18px 4px'};background:${isMe?'rgba(200,169,110,0.25)':'var(--surface2)'};border:1px solid ${isMe?'rgba(200,169,110,0.3)':'var(--border)'};font-size:0.85rem;word-break:break-word">${escapeHtml(m.message)}</div>` : ''}
+    </div>`;
+}
+
+function appendDMMessage(m){
+  const container = document.getElementById('dm-messages');
+  if(!container || !m) return;
+  if(m.id!=null){ if(_dmRenderedIds.has(m.id)) return; _dmRenderedIds.add(m.id); }
+  if(container.dataset.empty === '1'){ container.innerHTML=''; container.dataset.empty=''; }
+  const wasAtBottom = container.scrollHeight - container.scrollTop - container.clientHeight < 60;
+  container.insertAdjacentHTML('beforeend', renderDMMessageHtml(m));
+  if(wasAtBottom || m.sender_id===currentUser.id) container.scrollTop = container.scrollHeight;
+}
+
 async function sendDMMessage() {
   const inp = document.getElementById('dm-input');
   if (!inp || !currentUser || !activeDMFriendId) return;
@@ -4676,15 +4708,17 @@ async function sendDMMessage() {
   const myNick = profileData.nickname || currentUser.email?.split('@')[0] || 'Ben';
   try {
     const dmKey = [currentUser.id, activeDMFriendId].sort().join('_');
-    await sb.from('direct_messages').insert({
+    const { data: inserted, error } = await sb.from('direct_messages').insert({
       dm_key: dmKey,
       sender_id: currentUser.id,
       receiver_id: activeDMFriendId,
       sender_nick: myNick,
       message: msg,
       sent_at: new Date().toISOString()
-    });
-    loadDMMessages();
+    }).select().single();
+    if (error) throw error;
+    // Anlık görünüm: realtime event'i beklemeden hemen ekle
+    if (inserted) appendDMMessage(inserted);
   } catch(e) { showResetToast('Mesaj gönderilemedi: ' + e.message); }
 }
 
@@ -4695,20 +4729,16 @@ async function loadDMMessages() {
   try {
     const dmKey = [currentUser.id, activeDMFriendId].sort().join('_');
     const { data: msgs } = await sb.from('direct_messages').select('*').eq('dm_key', dmKey).order('sent_at', { ascending: true }).limit(80);
+    _dmRenderedIds = new Set();
     if (!msgs || !msgs.length) {
       container.innerHTML = '<div style="text-align:center;color:var(--muted);font-size:0.75rem;margin-top:20px">Henüz mesaj yok. İlk sen yaz!</div>';
+      container.dataset.empty = '1';
       return;
     }
-    const wasAtBottom = container.scrollHeight - container.scrollTop - container.clientHeight < 50;
-    container.innerHTML = msgs.map(m => {
-      const isMe = m.sender_id === currentUser.id;
-      return `<div style="display:flex;flex-direction:column;align-items:${isMe?'flex-end':'flex-start'};gap:2px">
-        <span style="font-size:0.6rem;color:var(--muted);padding:0 10px">${isMe?'Sen':m.sender_nick} · ${new Date(m.sent_at).toLocaleTimeString('tr-TR',{hour:'2-digit',minute:'2-digit'})}</span>
-        ${m.image_url ? `<img src="${m.image_url}" style="max-width:200px;border-radius:10px;border:1px solid var(--border)">` : ''}
-        ${m.message ? `<div style="max-width:75%;padding:9px 14px;border-radius:${isMe?'18px 18px 4px 18px':'18px 18px 18px 4px'};background:${isMe?'rgba(200,169,110,0.25)':'var(--surface2)'};border:1px solid ${isMe?'rgba(200,169,110,0.3)':'var(--border)'};font-size:0.85rem;word-break:break-word">${escapeHtml(m.message)}</div>` : ''}
-      </div>`;
-    }).join('');
-    if (wasAtBottom) container.scrollTop = container.scrollHeight;
+    container.dataset.empty = '';
+    msgs.forEach(m => { if(m.id!=null) _dmRenderedIds.add(m.id); });
+    container.innerHTML = msgs.map(renderDMMessageHtml).join('');
+    container.scrollTop = container.scrollHeight;
   } catch(e) {}
 }
 
@@ -4720,12 +4750,13 @@ async function sendDMImage(file) {
   reader.onload = async (e) => {
     const dmKey = [currentUser.id, activeDMFriendId].sort().join('_');
     try {
-      await sb.from('direct_messages').insert({
+      const { data: inserted, error } = await sb.from('direct_messages').insert({
         dm_key: dmKey, sender_id: currentUser.id, receiver_id: activeDMFriendId,
         sender_nick: myNick, message: '', image_url: e.target.result,
         sent_at: new Date().toISOString()
-      });
-      loadDMMessages();
+      }).select().single();
+      if (error) throw error;
+      if (inserted) appendDMMessage(inserted);
     } catch(err) { showResetToast('Fotoğraf gönderilemedi.'); }
   };
   reader.readAsDataURL(file);
@@ -4741,8 +4772,8 @@ function startGroupChatPolling(groupId) {
   // gerçek zamanlı (Supabase Realtime) abonelik kuruyor.
   if (groupChatChannels[groupId]) return; // zaten abone
   const ch = sb.channel('group-chat-'+groupId)
-    .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'group_messages', filter: 'group_id=eq.'+groupId }, () => {
-      loadGroupChat(groupId);
+    .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'group_messages', filter: 'group_id=eq.'+groupId }, (payload) => {
+      appendGroupMessage(groupId, payload.new);
     })
     .subscribe();
   groupChatChannels[groupId] = ch;
@@ -5101,12 +5132,13 @@ async function sendGroupImage(groupId, file) {
   const reader = new FileReader();
   reader.onload = async (e) => {
     try {
-      await sb.from('group_messages').insert({
+      const { data: inserted, error } = await sb.from('group_messages').insert({
         group_id: groupId, user_id: currentUser.id,
         nickname: myNick, message: '', image_url: e.target.result,
         sent_at: new Date().toISOString()
-      });
-      loadGroupChat(groupId);
+      }).select().single();
+      if(error) throw error;
+      if(inserted) appendGroupMessage(groupId, inserted);
     } catch(err) { showResetToast('Fotoğraf gönderilemedi.'); }
   };
   reader.readAsDataURL(file);
@@ -5693,6 +5725,28 @@ async function rejectGroupMember(groupId, userId){
 }
 
 // ===== GROUP CHAT =====
+let _groupRenderedIds = {}; // groupId -> Set
+
+function renderGroupMessageHtml(m){
+  const isMe = m.user_id === currentUser.id;
+  return `<div style="display:flex;flex-direction:column;align-items:${isMe?'flex-end':'flex-start'};gap:2px">
+      <span style="font-size:0.62rem;color:var(--muted);padding:0 6px">${isMe?'Sen':m.nickname||'?'} &middot; ${new Date(m.sent_at).toLocaleTimeString('tr-TR',{hour:'2-digit',minute:'2-digit'})}</span>
+      ${m.image_url ? `<img src="${m.image_url}" style="max-width:180px;border-radius:10px;border:1px solid var(--border)">` : ''}
+      ${m.message ? `<div style="max-width:75%;padding:7px 12px;border-radius:${isMe?'12px 12px 4px 12px':'12px 12px 12px 4px'};background:${isMe?'rgba(200,169,110,0.2)':'var(--surface2)'};border:1px solid ${isMe?'rgba(200,169,110,0.3)':'var(--border)'};font-size:0.82rem;word-break:break-word">${escapeHtml(m.message)}</div>` : ''}
+    </div>`;
+}
+
+function appendGroupMessage(groupId, m){
+  const container = document.getElementById('chat-messages-'+groupId);
+  if(!container || !m) return;
+  if(!_groupRenderedIds[groupId]) _groupRenderedIds[groupId] = new Set();
+  const idSet = _groupRenderedIds[groupId];
+  if(m.id!=null){ if(idSet.has(m.id)) return; idSet.add(m.id); }
+  if(container.dataset.empty === '1'){ container.innerHTML=''; container.dataset.empty=''; }
+  container.insertAdjacentHTML('beforeend', renderGroupMessageHtml(m));
+  container.scrollTop = container.scrollHeight;
+}
+
 async function loadGroupChat(groupId){
   const container = document.getElementById('chat-messages-'+groupId);
   if(!container) return;
@@ -5700,18 +5754,15 @@ async function loadGroupChat(groupId){
     const { data: msgs } = await sb.from('group_messages')
       .select('*').eq('group_id', groupId)
       .order('sent_at', {ascending: true}).limit(60);
+    _groupRenderedIds[groupId] = new Set();
     if(!msgs || !msgs.length){
       container.innerHTML = '<div style="text-align:center;color:var(--muted);font-size:0.75rem">Henuz mesaj yok. Ilk mesaji sen gonder!</div>';
+      container.dataset.empty = '1';
       return;
     }
-    container.innerHTML = msgs.map(m=>{
-      const isMe = m.user_id === currentUser.id;
-      return `<div style="display:flex;flex-direction:column;align-items:${isMe?'flex-end':'flex-start'};gap:2px">
-        <span style="font-size:0.62rem;color:var(--muted);padding:0 6px">${isMe?'Sen':m.nickname||'?'} &middot; ${new Date(m.sent_at).toLocaleTimeString('tr-TR',{hour:'2-digit',minute:'2-digit'})}</span>
-        ${m.image_url ? `<img src="${m.image_url}" style="max-width:180px;border-radius:10px;border:1px solid var(--border)">` : ''}
-        ${m.message ? `<div style="max-width:75%;padding:7px 12px;border-radius:${isMe?'12px 12px 4px 12px':'12px 12px 12px 4px'};background:${isMe?'rgba(200,169,110,0.2)':'var(--surface2)'};border:1px solid ${isMe?'rgba(200,169,110,0.3)':'var(--border)'};font-size:0.82rem;word-break:break-word">${escapeHtml(m.message)}</div>` : ''}
-      </div>`;
-    }).join('');
+    container.dataset.empty = '';
+    msgs.forEach(m => { if(m.id!=null) _groupRenderedIds[groupId].add(m.id); });
+    container.innerHTML = msgs.map(renderGroupMessageHtml).join('');
     container.scrollTop = container.scrollHeight;
   } catch(e){ container.innerHTML = '<div style="color:var(--danger);font-size:0.75rem">Chat yuklenemedi.</div>'; }
 }
@@ -5725,14 +5776,15 @@ async function sendChatMessage(groupId){
   input.value = '';
   const myNick = profileData.nickname || currentUser.user_metadata?.full_name || currentUser.email?.split('@')[0] || 'Kullanici';
   try {
-    await sb.from('group_messages').insert({
+    const { data: inserted, error } = await sb.from('group_messages').insert({
       group_id: groupId,
       user_id: currentUser.id,
       nickname: myNick,
       message: msg,
       sent_at: new Date().toISOString()
-    });
-    loadGroupChat(groupId);
+    }).select().single();
+    if(error) throw error;
+    if(inserted) appendGroupMessage(groupId, inserted);
     startGroupChatPolling(groupId);
   } catch(e){ showResetToast('Mesaj gonderilemedi: '+e.message); }
 }
