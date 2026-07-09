@@ -3317,31 +3317,39 @@ async function aiSuggestMeaning(auto=false){
 // garantilemeye çalışır (yanlışlıkla Türkçe gelirse otomatik yeniden dener).
 async function fetchSentencesForMeaning(word, meaning, mode){
   const PROXY='https://empty-block-cfe3.ahmetyildirimm56.workers.dev/';
-  // Örnek cümle dili, seçili anlam moduyla (TR/EN) eşleşmeli:
-  // Türkçe anlama bakılıyorsa Türkçe örnek, İngilizce anlama
-  // bakılıyorsa İngilizce örnek gelmeli.
   const targetLang = mode || vMeaningMode || 'tr';
 
-  const fetchOnce = () => fetch(PROXY,{method:'POST',headers:{'Content-Type':'application/json'},
-    body:JSON.stringify({word:word+' (meaning: '+meaning+')'})}).then(r=>r.json());
+  // ÖNEMLİ TESPİT: Worker'a bağlam olarak Türkçe anlam gönderildiğinde
+  // güvenilir şekilde İngilizce örnek cümle üretiyor; İngilizce tanım
+  // metni gönderildiğinde bazen yanlışlıkla Türkçe cümle döndürüyor.
+  // Bu yüzden EN modda bile worker'a bağlam olarak TR anlamı gönderiyoruz
+  // (ekranda gösterilen anlam dili değişmiyor, sadece arka plan isteği).
+  let contextMeaning = meaning;
+  if(targetLang === 'en'){
+    const trHint = vLastAiData && (Array.isArray(vLastAiData.tr) ? vLastAiData.tr[0] : vLastAiData.tr);
+    if(trHint) contextMeaning = trHint;
+  }
 
-  let d = await fetchOnce();
+  // Retry'ın işe yaraması için her denemede isteği hafifçe değiştiriyoruz;
+  // aksi halde worker deterministik olduğundan retry birebir aynı
+  // (yanlış) cevabı tekrar döndürüyordu.
+  const fetchOnce = (attempt) => fetch(PROXY,{method:'POST',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({word:word+' (meaning: '+contextMeaning+')'+(attempt?' '.repeat(attempt):'')})}).then(r=>r.json());
+
+  const isMismatch = (obj) => {
+    const ex = [obj.e1, obj.e2, obj.e3].filter(Boolean);
+    if(!ex.length) return false;
+    return targetLang === 'tr' ? ex.every(t=>!looksLikeTurkish(t)) : ex.some(looksLikeTurkish);
+  };
+
+  let d = await fetchOnce(0);
   if(d.error) throw new Error(d.error);
 
-  const examples = [d.e1, d.e2, d.e3].filter(Boolean);
-  const mismatch = targetLang === 'tr'
-    ? (examples.length && examples.every(t=>!looksLikeTurkish(t)))   // TR bekleniyor ama hiçbiri Türkçe değil
-    : (examples.length && examples.some(looksLikeTurkish));           // EN bekleniyor ama Türkçe karışmış
-
-  if(mismatch){
-    const retry = await fetchOnce();
-    if(!retry.error){
-      const retryExamples = [retry.e1, retry.e2, retry.e3].filter(Boolean);
-      const retryOk = targetLang === 'tr'
-        ? retryExamples.some(t=>looksLikeTurkish(t))
-        : retryExamples.every(t=>!looksLikeTurkish(t));
-      if(retryOk) d = retry;
-    }
+  let attempt = 1;
+  while(isMismatch(d) && attempt <= 3){
+    const retry = await fetchOnce(attempt);
+    if(!retry.error) d = retry;
+    attempt++;
   }
   return d;
 }
