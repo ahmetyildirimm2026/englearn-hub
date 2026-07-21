@@ -727,7 +727,7 @@ document.getElementById('pwa-manifest').href=URL.createObjectURL(mblob);
           <select id="srs-schedule-select" onchange="changeSrsSchedule(this.value)" style="width:100%;padding:8px 10px;border-radius:8px;background:var(--surface2);border:1px solid var(--border);color:var(--text);font-family:'DM Sans',sans-serif;font-size:0.82rem">
             <option value="classic">Klasik (1g / 3g / 1h / 1ay)</option>
             <option value="intense">Yoğun (1g / 2g / 4g / 1h / 2h)</option>
-            <option value="ebbinghaus">Ebbinghaus (1g / 1h / 16g / 5h)</option>
+            <option value="ebbinghaus">Dengeli Tekrar (1g / 1h / 16g / 5h)</option>
             <option value="weekly">Haftalık (1h / 2h / 3h / 1ay)</option>
             <option value="monthly">Aylık (1ay / 2ay / 3ay)</option>
             <option value="custom">Özel (gün sayılarını gir)</option>
@@ -1116,6 +1116,37 @@ document.getElementById('pwa-manifest').href=URL.createObjectURL(mblob);
 
   <!-- ===== ARKADAŞLAR PANELİ ===== -->
   <!-- ===== FEEDBACK PANEL ===== -->
+  <!-- ===== YKS SÖZLÜK ===== -->
+  <div id="panel-yks-sozluk" class="panel">
+    <div class="card" style="margin-bottom:16px">
+      <div class="section-title"><span class="dot" style="background:var(--accent)"></span>📖 YKS Sözlük</div>
+      <p style="font-size:0.82rem;color:var(--muted);margin-bottom:14px">YKS-Dil sınavlarında sık çıkan kelimeler. Her kelime için istersen İngilizce, istersen Türkçe kullanımda yapay zekayla taze bir örnek cümle üretebilirsin.</p>
+      <div style="display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap">
+        <button class="btn btn-sm" onclick="filterYksSozluk('all')" id="yks-filter-all" style="background:rgba(200,169,110,0.15);border:1px solid var(--accent);color:var(--accent)">Tümü</button>
+        <button class="btn btn-sm" onclick="filterYksSozluk('kelime')" id="yks-filter-kelime" style="background:var(--surface2);border:1px solid var(--border);color:var(--text)">Kelimeler</button>
+        <button class="btn btn-sm" onclick="filterYksSozluk('phrasal')" id="yks-filter-phrasal" style="background:var(--surface2);border:1px solid var(--border);color:var(--text)">Phrasal Verbs</button>
+      </div>
+      <div id="yks-sozluk-list" style="display:flex;flex-direction:column;gap:10px"></div>
+    </div>
+  </div>
+
+  <!-- ===== GÜNÜN KELİMELERİ (EŞLEŞTİRME) ===== -->
+  <div id="panel-gunun-kelimeleri" class="panel">
+    <div class="card" style="margin-bottom:16px">
+      <div class="section-title"><span class="dot" style="background:var(--accent2)"></span>🗓️ Günün Kelimeleri</div>
+      <p style="font-size:0.82rem;color:var(--muted);margin-bottom:14px">Bugün için karma seçilmiş kelimeleri Türkçe anlamlarıyla eşleştir.</p>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
+        <div id="gk-progress" style="font-size:0.78rem;color:var(--muted)">0 / 0 eşleşti</div>
+        <button class="btn btn-sm" onclick="renderGununKelimeleri(true)" style="background:var(--surface2);border:1px solid var(--border);color:var(--text)">🔀 Yeni Karma Set</button>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:24px">
+        <div id="gk-col-en" style="display:flex;flex-direction:column;gap:8px"></div>
+        <div id="gk-col-tr" style="display:flex;flex-direction:column;gap:8px"></div>
+      </div>
+      <div id="gk-complete-msg" style="display:none;text-align:center;padding:20px;color:var(--success);font-weight:700"></div>
+    </div>
+  </div>
+
   <!-- ===== ÜCRETSİZ İÇERİKLER ===== -->
   <div id="panel-free-content" class="panel">
     <div class="card" style="margin-bottom:16px">
@@ -4438,7 +4469,7 @@ function switchTab(name, btn) {
     });
   }
   const lbl = document.getElementById('current-tab-label');
-  const TAB_LABELS2 = { dashboard:'Genel Bakış', vocab:'Kişisel Banka', wordlists:'Kelime Listeleri', quiz:'Test Et', srs:'Tekrar', study:'Çalışma Kaydı', goals:'Hedeflerim', profile:'Profilim', groups:'Çalışma Grupları', friends:'Arkadaşlar', dm:'Mesajlar', feedback:'Geri Bildirim', 'free-content':'Ücretsiz İçerikler' };
+  const TAB_LABELS2 = { dashboard:'Genel Bakış', vocab:'Kişisel Banka', wordlists:'Kelime Listeleri', quiz:'Test Et', srs:'Tekrar', study:'Çalışma Kaydı', goals:'Hedeflerim', profile:'Profilim', groups:'Çalışma Grupları', friends:'Arkadaşlar', dm:'Mesajlar', feedback:'Geri Bildirim', 'free-content':'Ücretsiz İçerikler', 'yks-sozluk':'YKS Sözlük', 'gunun-kelimeleri':'Günün Kelimeleri' };
   if (lbl) lbl.textContent = TAB_LABELS2[name] || name;
   if (name === 'dashboard') updateDashboard();
   if (name === 'wordlists') { renderSessionBtns(); renderWordTable(); renderAnalysis(); }
@@ -4451,6 +4482,8 @@ function switchTab(name, btn) {
   if (name === 'groups') renderGroupsPanel();
   if (name === 'friends') renderFriendsMainPanel();
   if (name === 'free-content') loadFreeContentStats();
+  if (name === 'yks-sozluk') renderYksSozluk();
+  if (name === 'gunun-kelimeleri') renderGununKelimeleri();
 }
 
 // ============================================================
@@ -5947,6 +5980,8 @@ const APP_TABS = {
   yks: [
     {id:'dashboard', icon:'📊', label:'Genel Bakış'},
     {id:'srs',       icon:'🔁', label:'Tekrar', badge:'srs-due-dot'},
+    {id:'yks-sozluk', icon:'📖', label:'YKS Sözlük'},
+    {id:'gunun-kelimeleri', icon:'🗓️', label:'Günün Kelimeleri'},
     {id:'free-content', icon:'🎁', label:'Ücretsiz İçerikler'},
     {id:'profile',   icon:'👤', label:'Profilim'},
     {id:'friends',   icon:'🤝', label:'Arkadaşlar'},
@@ -6196,6 +6231,583 @@ function goToFreeContentFromPromo() {
 
 // ═══════════════════════════════════════════════════════════════
 // ÜCRETSİZ İÇERİKLER (YKS Hazırlık)
+// ═══════════════════════════════════════════════════════════════
+// YKS SÖZLÜK + GÜNÜN KELİMELERİ
+// Kelimeler YKS-Dil sınavlarında sık geçen genel kelimelerdir.
+// Örnek cümleler kitaplardan KOPYALANMAZ — istek üzerine AI ile
+// anlık olarak üretilir (telif hakkına takılmamak için).
+// ═══════════════════════════════════════════════════════════════
+const YKS_WORD_BANK = [
+  {w:'currently', t:'şu anda', type:'kelime', syn:['presently','now']},
+  {w:'victim', t:'kurban, mağdur', type:'kelime', syn:['sufferer','casualty']},
+  {w:'trade', t:'ticaret', type:'kelime', syn:['commerce','business']},
+  {w:'guess', t:'tahmin etmek', type:'kelime', syn:['estimate','predict']},
+  {w:'continent', t:'kıta', type:'kelime', syn:['mainland']},
+  {w:'gradually', t:'yavaş yavaş, kademeli olarak', type:'kelime', syn:['progressively','slowly']},
+  {w:'growth', t:'büyüme, gelişme', type:'kelime', syn:['development','expansion']},
+  {w:'disease', t:'hastalık', type:'kelime', syn:['illness','sickness']},
+  {w:'flexible', t:'esnek', type:'kelime', syn:['adaptable','bendable']},
+  {w:'increase', t:'artmak, artırmak', type:'kelime', syn:['rise','grow']},
+  {w:'feed', t:'beslemek', type:'kelime', syn:['nourish']},
+  {w:'investigate', t:'araştırmak, soruşturmak', type:'kelime', syn:['examine','probe']},
+  {w:'proud', t:'gururlu', type:'kelime', syn:['pleased','satisfied']},
+  {w:'disaster', t:'felaket, afet', type:'kelime', syn:['calamity','catastrophe']},
+  {w:'garbage', t:'çöp', type:'kelime', syn:['trash','rubbish']},
+  {w:'destiny', t:'kader', type:'kelime', syn:['fate','fortune']},
+  {w:'face', t:'yüzleşmek, karşılaşmak', type:'kelime', syn:['confront','encounter']},
+  {w:'beneficial', t:'faydalı', type:'kelime', syn:['helpful','useful']},
+  {w:'fund', t:'fon, kaynak', type:'kelime', syn:['capital','resource']},
+  {w:'obviously', t:'açıkça, belli ki', type:'kelime', syn:['clearly','evidently']},
+  {w:'take off', t:'yükselişe geçmek', type:'phrasal', syn:['launch']},
+  {w:'give in', t:'boyun eğmek, teslim olmak', type:'phrasal', syn:['surrender','yield']},
+  {w:'look up to', t:'saygı duymak, hayran olmak', type:'phrasal', syn:['admire','respect']},
+  {w:'carry out', t:'yürütmek, gerçekleştirmek', type:'phrasal', syn:['perform','execute']},
+  {w:'come up with', t:'bulmak, üretmek', type:'phrasal', syn:['devise','produce']},
+  {w:'put up with', t:'katlanmak, tahammül etmek', type:'phrasal', syn:['tolerate','endure']},
+  {w:'figure out', t:'çözmek, anlamak', type:'phrasal', syn:['solve','work out']},
+  {w:'break down', t:'bozulmak, çökmek', type:'phrasal', syn:['malfunction','collapse']},
+  {w:'bring about', t:'sebep olmak, yol açmak', type:'phrasal', syn:['cause','trigger']},
+  {w:'count on', t:'güvenmek', type:'phrasal', syn:['rely on','depend on']},
+
+  // ============================================================
+  // Aşağıdaki kelimeler, Millî Eğitim Bakanlığı'nın ücretsiz
+  // dağıttığı "Vocabulary for YDT" (11. sınıf) kaynağındaki
+  // temalardan derlenen kelime listesidir. Kitabın kendi tanım/
+  // örnek cümle/alıştırma metinleri KOPYALANMAMIŞTIR — sadece
+  // kelimelerin kendisi kullanılmış, Türkçe karşılıkları ve eş
+  // anlamlıları ayrıca hazırlanmış, örnek cümleler ise istek
+  // üzerine AI ile anlık üretilmektedir.
+  // ============================================================
+  {w:'accomplishment', t:'başarı', type:'kelime', syn:['achievement','feat']},
+  {w:'challenge', t:'zorlamak, meydan okumak', type:'kelime', syn:['test','dare']},
+  {w:'acquire', t:'edinmek, kazanmak', type:'kelime', syn:['obtain','gain']},
+  {w:'competitive', t:'rekabetçi', type:'kelime', syn:['rivalrous','ambitious']},
+  {w:'affordable', t:'uygun fiyatlı', type:'kelime', syn:['inexpensive','cheap']},
+  {w:'concern', t:'endişe, kaygı', type:'kelime', syn:['worry','issue']},
+  {w:'arbitrarily', t:'keyfi olarak', type:'kelime', syn:['randomly','capriciously']},
+  {w:'confidence', t:'özgüven', type:'kelime', syn:['self-assurance','certainty']},
+  {w:'briefly', t:'kısaca', type:'kelime', syn:['shortly','concisely']},
+  {w:'call off', t:'iptal etmek', type:'phrasal', syn:['cancel','abandon']},
+  {w:'capability', t:'yetenek, kapasite', type:'kelime', syn:['ability','capacity']},
+  {w:'cut off', t:'kesmek, durdurmak', type:'phrasal', syn:['disconnect','stop']},
+  {w:'dedicated', t:'kendini adamış', type:'kelime', syn:['devoted','committed']},
+  {w:'differ', t:'farklı olmak', type:'kelime', syn:['vary','diverge']},
+  {w:'diligently', t:'gayretle, özenle', type:'kelime', syn:['carefully','industriously']},
+  {w:'encounter', t:'karşılaşmak', type:'kelime', syn:['meet','come across']},
+  {w:'endure', t:'dayanmak, katlanmak', type:'kelime', syn:['bear','withstand']},
+  {w:'essential', t:'gerekli, temel', type:'kelime', syn:['vital','crucial']},
+  {w:'facility', t:'tesis, imkan', type:'kelime', syn:['amenity','institution']},
+  {w:'fill out', t:'doldurmak (form vb.)', type:'phrasal', syn:['complete','fill in']},
+  {w:'firmly', t:'kararlılıkla, sıkıca', type:'kelime', syn:['steadily','resolutely']},
+  {w:'incredible', t:'inanılmaz', type:'kelime', syn:['amazing','unbelievable']},
+  {w:'intend', t:'niyet etmek', type:'kelime', syn:['plan','mean to']},
+  {w:'intense', t:'yoğun', type:'kelime', syn:['strong','extreme']},
+  {w:'keep off', t:'uzak durmak', type:'phrasal', syn:['avoid','stay away from']},
+  {w:'look for', t:'aramak', type:'phrasal', syn:['search for','seek']},
+  {w:'notice', t:'fark etmek', type:'kelime', syn:['observe','spot']},
+  {w:'numerous', t:'sayısız, çok sayıda', type:'kelime', syn:['many','countless']},
+  {w:'occasionally', t:'ara sıra', type:'kelime', syn:['sometimes','now and then']},
+  {w:'occupation', t:'meslek', type:'kelime', syn:['job','profession']},
+  {w:'perfectly', t:'mükemmel şekilde', type:'kelime', syn:['flawlessly','completely']},
+  {w:'prevalent', t:'yaygın', type:'kelime', syn:['common','widespread']},
+  {w:'prevent', t:'önlemek', type:'kelime', syn:['stop','avert']},
+  {w:'promise', t:'söz, vaat', type:'kelime', syn:['pledge','vow']},
+  {w:'provide', t:'sağlamak', type:'kelime', syn:['supply','offer']},
+  {w:'reinforce', t:'güçlendirmek, pekiştirmek', type:'kelime', syn:['strengthen','support']},
+  {w:'repeatedly', t:'tekrar tekrar', type:'kelime', syn:['again and again','frequently']},
+  {w:'requirement', t:'gereklilik, şart', type:'kelime', syn:['necessity','prerequisite']},
+  {w:'rest on', t:'dayanmak, bağlı olmak', type:'phrasal', syn:['depend on','rely on']},
+  {w:'rivalry', t:'rekabet', type:'kelime', syn:['competition','contest']},
+  {w:'sell out', t:'tükenmek, tükeninceye kadar satmak', type:'phrasal', syn:['run out','deplete']},
+  {w:'set back', t:'geciktirmek, engellemek', type:'phrasal', syn:['delay','hinder']},
+  {w:'significantly', t:'önemli ölçüde', type:'kelime', syn:['considerably','notably']},
+  {w:'spring up', t:'aniden ortaya çıkmak', type:'phrasal', syn:['emerge','appear suddenly']},
+  {w:'substitute', t:'yedek, vekil', type:'kelime', syn:['replacement','alternative']},
+  {w:'take up', t:'başlamak, üstlenmek', type:'phrasal', syn:['start','begin']},
+  {w:'trivial', t:'önemsiz', type:'kelime', syn:['minor','insignificant']},
+  {w:'ultimately', t:'sonuçta, nihayetinde', type:'kelime', syn:['eventually','finally']},
+  {w:'abrupt', t:'ani, beklenmedik', type:'kelime', syn:['sudden','unexpected']},
+  {w:'abundant', t:'bol', type:'kelime', syn:['plentiful','ample']},
+  {w:'accidentally', t:'kazara', type:'kelime', syn:['unintentionally','by chance']},
+  {w:'account for', t:'açıklamak, oluşturmak', type:'phrasal', syn:['explain','constitute']},
+  {w:'amount to', t:'toplamı olmak, varmak', type:'phrasal', syn:['add up to','total']},
+  {w:'approximately', t:'yaklaşık olarak', type:'kelime', syn:['roughly','about']},
+  {w:'awareness', t:'farkındalık', type:'kelime', syn:['consciousness','knowledge']},
+  {w:'closely', t:'yakından', type:'kelime', syn:['carefully','intimately']},
+  {w:'collision', t:'çarpışma', type:'kelime', syn:['crash','impact']},
+  {w:'conscious', t:'bilinçli, farkında', type:'kelime', syn:['aware','mindful']},
+  {w:'consumption', t:'tüketim', type:'kelime', syn:['usage','intake']},
+  {w:'contamination', t:'kirlenme', type:'kelime', syn:['pollution','impurity']},
+  {w:'crucial', t:'çok önemli, kritik', type:'kelime', syn:['critical','essential']},
+  {w:'densely', t:'yoğun bir şekilde (nüfus vb.)', type:'kelime', syn:['thickly','heavily']},
+  {w:'dramatically', t:'çarpıcı biçimde', type:'kelime', syn:['drastically','sharply']},
+  {w:'drought', t:'kuraklık', type:'kelime', syn:['dry spell','aridity']},
+  {w:'efficient', t:'verimli', type:'kelime', syn:['effective','productive']},
+  {w:'emit', t:'yaymak, salmak (gaz vb.)', type:'kelime', syn:['release','discharge']},
+  {w:'evaporate', t:'buharlaşmak', type:'kelime', syn:['vaporise','dry up']},
+  {w:'destruction', t:'yıkım, tahribat', type:'kelime', syn:['devastation','ruin']},
+  {w:'extinction', t:'soyu tükenme', type:'kelime', syn:['dying out','disappearance']},
+  {w:'disastrous', t:'felaket getiren', type:'kelime', syn:['catastrophic','ruinous']},
+  {w:'extract', t:'çıkarmak, elde etmek', type:'kelime', syn:['remove','draw out']},
+  {w:'disperse', t:'dağılmak, dağıtmak', type:'kelime', syn:['scatter','spread out']},
+  {w:'harvest', t:'hasat, hasat etmek', type:'kelime', syn:['reap','gather']},
+  {w:'immediately', t:'hemen', type:'kelime', syn:['at once','instantly']},
+  {w:'merely', t:'sadece', type:'kelime', syn:['just','simply']},
+  {w:'increasingly', t:'giderek artan biçimde', type:'kelime', syn:['more and more']},
+  {w:'nurture', t:'beslemek, geliştirmek', type:'kelime', syn:['nourish','foster']},
+  {w:'inevitably', t:'kaçınılmaz olarak', type:'kelime', syn:['unavoidably','certainly']},
+  {w:'irrigation', t:'sulama', type:'kelime', syn:['watering']},
+  {w:'jeopardise', t:'tehlikeye atmak', type:'kelime', syn:['endanger','risk']},
+  {w:'lead to', t:'yol açmak', type:'phrasal', syn:['cause','result in']},
+  {w:'look into', t:'incelemek, araştırmak', type:'phrasal', syn:['investigate','examine']},
+  {w:'massive', t:'devasa, kütlesel', type:'kelime', syn:['huge','enormous']},
+  {w:'precipitation', t:'yağış', type:'kelime', syn:['rainfall']},
+  {w:'predictable', t:'tahmin edilebilir', type:'kelime', syn:['expected','foreseeable']},
+  {w:'put forward', t:'öne sürmek, teklif etmek', type:'phrasal', syn:['propose','suggest']},
+  {w:'put out', t:'söndürmek', type:'phrasal', syn:['extinguish']},
+  {w:'release', t:'salıvermek, serbest bırakmak', type:'kelime', syn:['free','let go']},
+  {w:'run out', t:'tükenmek, bitmek', type:'phrasal', syn:['be depleted','be used up']},
+  {w:'scale down', t:'küçültmek, azaltmak', type:'phrasal', syn:['reduce','cut back']},
+  {w:'shortage', t:'kıtlık, yetersizlik', type:'kelime', syn:['scarcity','lack']},
+  {w:'spread', t:'yayılmak, yaymak', type:'kelime', syn:['extend','disperse']},
+  {w:'stem from', t:'kaynaklanmak', type:'phrasal', syn:['originate from','derive from']},
+  {w:'strike', t:'çarpmak, vurmak', type:'kelime', syn:['hit','collide with']},
+  {w:'take away', t:'götürmek, alıp götürmek', type:'phrasal', syn:['remove','carry off']},
+  {w:'unfortunately', t:'ne yazık ki', type:'kelime', syn:['sadly','regrettably']},
+  {w:'visible', t:'görünür', type:'kelime', syn:['noticeable','apparent']},
+  {w:'vulnerable', t:'savunmasız, kırılgan', type:'kelime', syn:['exposed','defenceless']},
+  {w:'accompany', t:'eşlik etmek', type:'kelime', syn:['escort','go with']},
+  {w:'adversely', t:'olumsuz şekilde', type:'kelime', syn:['negatively','unfavourably']},
+  {w:'alleviate', t:'hafifletmek', type:'kelime', syn:['ease','relieve']},
+  {w:'avoid', t:'kaçınmak', type:'kelime', syn:['evade','prevent']},
+  {w:'boost', t:'artırmak, güçlendirmek', type:'kelime', syn:['increase','enhance']},
+  {w:'bring down', t:'düşürmek, indirmek', type:'phrasal', syn:['lower','topple']},
+  {w:'cautiously', t:'dikkatli bir şekilde', type:'kelime', syn:['carefully','warily']},
+  {w:'condition', t:'durum, koşul', type:'kelime', syn:['state','circumstance']},
+  {w:'constant', t:'sabit, sürekli', type:'kelime', syn:['continuous','steady']},
+  {w:'detect', t:'tespit etmek', type:'kelime', syn:['discover','identify']},
+  {w:'detrimental', t:'zararlı', type:'kelime', syn:['harmful','damaging']},
+  {w:'disorder', t:'düzensizlik, rahatsızlık', type:'kelime', syn:['illness','disturbance']},
+  {w:'diverse', t:'çeşitli', type:'kelime', syn:['varied','assorted']},
+  {w:'effectively', t:'etkili bir şekilde', type:'kelime', syn:['efficiently','successfully']},
+  {w:'excessive', t:'aşırı', type:'kelime', syn:['extreme','immoderate']},
+  {w:'frequently', t:'sık sık', type:'kelime', syn:['often','regularly']},
+  {w:'futile', t:'boşuna, faydasız', type:'kelime', syn:['useless','pointless']},
+  {w:'get over', t:'atlatmak, üstesinden gelmek', type:'phrasal', syn:['recover from','overcome']},
+  {w:'give up', t:'vazgeçmek', type:'phrasal', syn:['abandon','quit']},
+  {w:'inadequate', t:'yetersiz', type:'kelime', syn:['insufficient','deficient']},
+  {w:'indirectly', t:'dolaylı olarak', type:'kelime', syn:['obliquely']},
+  {w:'instantly', t:'anında', type:'kelime', syn:['immediately','at once']},
+  {w:'intake', t:'alım (besin vb.)', type:'kelime', syn:['consumption','ingestion']},
+  {w:'keep up', t:'ayak uydurmak, sürdürmek', type:'phrasal', syn:['maintain','sustain']},
+  {w:'limiting', t:'sınırlayıcı', type:'kelime', syn:['restrictive','constraining']},
+  {w:'medication', t:'ilaç, tedavi', type:'kelime', syn:['medicine','drug']},
+  {w:'nutritious', t:'besleyici', type:'kelime', syn:['healthy','nourishing']},
+  {w:'overcome', t:'üstesinden gelmek', type:'kelime', syn:['conquer','surmount']},
+  {w:'pass on', t:'aktarmak, geçirmek', type:'phrasal', syn:['transmit','hand down']},
+  {w:'precaution', t:'önlem', type:'kelime', syn:['safeguard','preventive measure']},
+  {w:'precede', t:'önce gelmek, öncülük etmek', type:'kelime', syn:['come before','go before']},
+  {w:'prominently', t:'belirgin şekilde', type:'kelime', syn:['noticeably','conspicuously']},
+  {w:'properly', t:'düzgün bir şekilde', type:'kelime', syn:['correctly','appropriately']},
+  {w:'pull through', t:'atlatmak, iyileşmek', type:'phrasal', syn:['recover','survive']},
+  {w:'resistance', t:'direnç', type:'kelime', syn:['opposition','immunity']},
+  {w:'respiration', t:'solunum', type:'kelime', syn:['breathing']},
+  {w:'result in', t:'sonuçlanmak', type:'phrasal', syn:['lead to','cause']},
+  {w:'reverse', t:'tersine çevirmek', type:'kelime', syn:['invert','turn back']},
+  {w:'slightly', t:'biraz, hafifçe', type:'kelime', syn:['a little','somewhat']},
+  {w:'stave off', t:'önlemek, geciktirmek', type:'phrasal', syn:['ward off','prevent']},
+  {w:'substance', t:'madde', type:'kelime', syn:['material','matter']},
+  {w:'supplement', t:'takviye etmek, ek almak', type:'kelime', syn:['add to','complement']},
+  {w:'threaten', t:'tehdit etmek', type:'kelime', syn:['endanger','intimidate']},
+  {w:'robust', t:'sağlam, güçlü', type:'kelime', syn:['strong','sturdy']},
+  {w:'treatment', t:'tedavi', type:'kelime', syn:['therapy','cure']},
+  {w:'scent', t:'koku', type:'kelime', syn:['smell','fragrance']},
+  {w:'unexpectedly', t:'beklenmedik şekilde', type:'kelime', syn:['suddenly','surprisingly']},
+  {w:'similar', t:'benzer', type:'kelime', syn:['alike','comparable']},
+  {w:'work out', t:'çözmek, spor yapmak', type:'phrasal', syn:['solve','exercise']},
+  {w:'afflict', t:'acı vermek, etkilemek', type:'kelime', syn:['trouble','plague']},
+  {w:'apparent', t:'belirgin, açık', type:'kelime', syn:['evident','obvious']},
+  {w:'break out', t:'patlak vermek, çıkmak', type:'phrasal', syn:['erupt','start suddenly']},
+  {w:'catastrophic', t:'yıkıcı, felaket niteliğinde', type:'kelime', syn:['disastrous','devastating']},
+  {w:'collapse', t:'çökmek, çöküş', type:'kelime', syn:['fall down','breakdown']},
+  {w:'compile', t:'derlemek', type:'kelime', syn:['gather','assemble']},
+  {w:'confidential', t:'gizli', type:'kelime', syn:['secret','private']},
+  {w:'consecutively', t:'art arda', type:'kelime', syn:['in a row','successively']},
+  {w:'construct', t:'inşa etmek', type:'kelime', syn:['build','erect']},
+  {w:'eventually', t:'sonunda', type:'kelime', syn:['ultimately','in the end']},
+  {w:'counter', t:'karşı koymak', type:'kelime', syn:['oppose','resist']},
+  {w:'exactly', t:'tam olarak', type:'kelime', syn:['precisely']},
+  {w:'cultivation', t:'tarım, yetiştirme', type:'kelime', syn:['farming','growing']},
+  {w:'excavation', t:'kazı', type:'kelime', syn:['digging','archaeological dig']},
+  {w:'deploy', t:'konuşlandırmak, kullanıma sunmak', type:'kelime', syn:['position','utilise']},
+  {w:'derive from', t:'türemek, kaynaklanmak', type:'phrasal', syn:['originate from','stem from']},
+  {w:'devastation', t:'yıkım', type:'kelime', syn:['destruction','ruin']},
+  {w:'drastically', t:'sert bir şekilde, ciddi ölçüde', type:'kelime', syn:['severely','radically']},
+  {w:'draw on', t:'yararlanmak, başvurmak', type:'phrasal', syn:['use','rely on']},
+  {w:'end up', t:'sonunda ... olmak/bulmak', type:'phrasal', syn:['finish up','wind up']},
+  {w:'expansion', t:'genişleme', type:'kelime', syn:['growth','enlargement']},
+  {w:'exposure', t:'maruz kalma', type:'kelime', syn:['contact','vulnerability']},
+  {w:'go away', t:'gitmek, uzaklaşmak', type:'phrasal', syn:['leave','depart']},
+  {w:'gorgeous', t:'muhteşem, göz alıcı', type:'kelime', syn:['beautiful','stunning']},
+  {w:'hardly', t:'neredeyse hiç, güçlükle', type:'kelime', syn:['barely','scarcely']},
+  {w:'impartial', t:'tarafsız', type:'kelime', syn:['unbiased','neutral']},
+  {w:'indigenous', t:'yerli, yerel', type:'kelime', syn:['native','local']},
+  {w:'negotiation', t:'müzakere', type:'kelime', syn:['bargaining','discussion']},
+  {w:'obsolete', t:'kullanım dışı, eskimiş', type:'kelime', syn:['outdated','out of date']},
+  {w:'settlement', t:'yerleşim, anlaşma', type:'kelime', syn:['agreement','colony']},
+  {w:'subsequent', t:'sonraki', type:'kelime', syn:['following','later']},
+  {w:'surround', t:'çevrelemek', type:'kelime', syn:['encircle','enclose']},
+  {w:'inhabit', t:'içinde yaşamak, oturmak', type:'kelime', syn:['live in','occupy']},
+  {w:'permanent', t:'kalıcı', type:'kelime', syn:['lasting','enduring']},
+  {w:'initially', t:'başlangıçta', type:'kelime', syn:['at first','originally']},
+  {w:'primitive', t:'ilkel', type:'kelime', syn:['ancient','basic']},
+  {w:'take over', t:'devralmak', type:'phrasal', syn:['assume control','seize']},
+  {w:'pull down', t:'yıkmak', type:'phrasal', syn:['demolish','tear down']},
+  {w:'turn down', t:'reddetmek', type:'phrasal', syn:['reject','refuse']},
+  {w:'reflect on', t:'üzerinde düşünmek', type:'phrasal', syn:['ponder','contemplate']},
+  {w:'undoubtedly', t:'kuşkusuz', type:'kelime', syn:['certainly','definitely']},
+  {w:'intervention', t:'müdahale', type:'kelime', syn:['interference','involvement']},
+  {w:'invasion', t:'istila', type:'kelime', syn:['attack','incursion']},
+  {w:'look to', t:'yönelmek, güvenmek', type:'phrasal', syn:['rely on','turn to']},
+  {w:'migrate', t:'göç etmek', type:'kelime', syn:['move','relocate']},
+  {w:'remain', t:'kalmak', type:'kelime', syn:['stay','continue to be']},
+  {w:'roughly', t:'kabaca, yaklaşık', type:'kelime', syn:['approximately','about']},
+  {w:'vanish', t:'kaybolmak', type:'kelime', syn:['disappear','fade away']},
+  {w:'widely', t:'yaygın olarak, geniş çapta', type:'kelime', syn:['extensively','broadly']},
+  {w:'separately', t:'ayrı olarak', type:'kelime', syn:['individually','apart']},
+  {w:'accelerate', t:'hızlandırmak', type:'kelime', syn:['speed up','hasten']},
+  {w:'contentment', t:'memnuniyet, huzur', type:'kelime', syn:['satisfaction','happiness']},
+  {w:'exclusively', t:'sadece, yalnızca', type:'kelime', syn:['solely','only']},
+  {w:'accommodate', t:'barındırmak, uyum sağlamak', type:'kelime', syn:['house','adapt to']},
+  {w:'convenience', t:'kolaylık', type:'kelime', syn:['ease','practicality']},
+  {w:'fall apart', t:'parçalanmak, dağılmak', type:'phrasal', syn:['break down','disintegrate']},
+  {w:'administrative', t:'idari', type:'kelime', syn:['managerial','organisational']},
+  {w:'customary', t:'alışılmış, geleneksel', type:'kelime', syn:['usual','traditional']},
+  {w:'allocate', t:'ayırmak, tahsis etmek', type:'kelime', syn:['assign','distribute']},
+  {w:'appropriate', t:'uygun', type:'kelime', syn:['suitable','fitting']},
+  {w:'disapproving', t:'onaylamayan', type:'kelime', syn:['critical','unfavourable']},
+  {w:'disturb', t:'rahatsız etmek', type:'kelime', syn:['bother','interrupt']},
+  {w:'employ', t:'istihdam etmek, kullanmak', type:'kelime', syn:['hire','use']},
+  {w:'centrepiece', t:'ana unsur, merkez öge', type:'kelime', syn:['focal point','highlight']},
+  {w:'enhance', t:'geliştirmek, artırmak', type:'kelime', syn:['improve','boost']},
+  {w:'come across', t:'rastlamak, karşılaşmak', type:'phrasal', syn:['encounter','find']},
+  {w:'enormous', t:'muazzam, çok büyük', type:'kelime', syn:['huge','immense']},
+  {w:'entirely', t:'tamamen', type:'kelime', syn:['completely','wholly']},
+  {w:'fall behind', t:'geride kalmak', type:'phrasal', syn:['lag','not keep up']},
+  {w:'go through', t:'yaşamak, katlanmak, incelemek', type:'phrasal', syn:['experience','undergo']},
+  {w:'hamper', t:'engellemek', type:'kelime', syn:['hinder','impede']},
+  {w:'identification', t:'kimlik, tanımlama', type:'kelime', syn:['recognition','identity']},
+  {w:'introduce', t:'tanıtmak', type:'kelime', syn:['present','bring in']},
+  {w:'keep on', t:'devam etmek', type:'phrasal', syn:['continue','carry on']},
+  {w:'predominant', t:'baskın, hakim', type:'kelime', syn:['dominant','prevailing']},
+  {w:'markedly', t:'belirgin şekilde', type:'kelime', syn:['noticeably','distinctly']},
+  {w:'preserve', t:'korumak', type:'kelime', syn:['maintain','protect']},
+  {w:'mysteriously', t:'gizemli bir şekilde', type:'kelime', syn:['strangely','inexplicably']},
+  {w:'offensive', t:'saldırgan, rahatsız edici', type:'kelime', syn:['insulting','unpleasant']},
+  {w:'outdated', t:'eski, güncelliğini yitirmiş', type:'kelime', syn:['obsolete','old-fashioned']},
+  {w:'overly', t:'aşırı derecede', type:'kelime', syn:['excessively','too']},
+  {w:'practical', t:'pratik', type:'kelime', syn:['functional','sensible']},
+  {w:'precious', t:'değerli', type:'kelime', syn:['valuable','cherished']},
+  {w:'previously', t:'daha önce', type:'kelime', syn:['before','formerly']},
+  {w:'priority', t:'öncelik', type:'kelime', syn:['precedence','importance']},
+  {w:'promotion', t:'terfi, tanıtım', type:'kelime', syn:['advancement','publicity']},
+  {w:'prosperity', t:'refah', type:'kelime', syn:['wealth','success']},
+  {w:'province', t:'il, taşra', type:'kelime', syn:['region','territory']},
+  {w:'rapidly', t:'hızla', type:'kelime', syn:['quickly','swiftly']},
+  {w:'refer to', t:'atıfta bulunmak, değinmek', type:'phrasal', syn:['mention','allude to']},
+  {w:'reputation', t:'itibar, ün', type:'kelime', syn:['standing','image']},
+  {w:'revenue', t:'gelir', type:'kelime', syn:['income','earnings']},
+  {w:'set out', t:'yola çıkmak, girişmek', type:'phrasal', syn:['begin','embark']},
+  {w:'spontaneously', t:'kendiliğinden', type:'kelime', syn:['impulsively','naturally']},
+  {w:'take after', t:'benzemek (ailesine)', type:'phrasal', syn:['resemble']},
+  {w:'tightly', t:'sıkıca', type:'kelime', syn:['firmly','securely']},
+  {w:'transmit', t:'iletmek, yaymak', type:'kelime', syn:['send','convey']},
+  {w:'bring out', t:'ortaya çıkarmak, çıkarmak', type:'phrasal', syn:['reveal','release']},
+  {w:'classify', t:'sınıflandırmak', type:'kelime', syn:['categorise','sort']},
+  {w:'come out', t:'ortaya çıkmak, yayınlanmak', type:'phrasal', syn:['emerge','be published']},
+  {w:'compliment', t:'iltifat', type:'kelime', syn:['praise','flattering remark']},
+  {w:'comprehensively', t:'kapsamlı bir şekilde', type:'kelime', syn:['thoroughly','completely']},
+  {w:'deception', t:'aldatma, hile', type:'kelime', syn:['trickery','deceit']},
+  {w:'deficiently', t:'eksik/yetersiz bir şekilde', type:'kelime', syn:['inadequately']},
+  {w:'deliberately', t:'kasıtlı olarak', type:'kelime', syn:['intentionally','purposely']},
+  {w:'demand', t:'talep', type:'kelime', syn:['request','requirement']},
+  {w:'devote', t:'adamak', type:'kelime', syn:['dedicate','commit']},
+  {w:'distinct', t:'farklı, belirgin', type:'kelime', syn:['different','separate']},
+  {w:'dive into', t:'kendini kaptırmak, dalmak', type:'phrasal', syn:['immerse in','plunge into']},
+  {w:'downside', t:'olumsuz yön, dezavantaj', type:'kelime', syn:['drawback','disadvantage']},
+  {w:'elevated', t:'yüksek, yükseltilmiş', type:'kelime', syn:['raised','high']},
+  {w:'encompass', t:'kapsamak, içermek', type:'kelime', syn:['include','cover']},
+  {w:'exhibition', t:'sergi', type:'kelime', syn:['display','show']},
+  {w:'flourish', t:'gelişmek, serpilmek', type:'kelime', syn:['thrive','prosper']},
+  {w:'get away', t:'kaçmak, uzaklaşmak', type:'phrasal', syn:['escape','leave']},
+  {w:'give away', t:'ele vermek, bağışlamak', type:'phrasal', syn:['reveal','donate']},
+  {w:'give off', t:'yaymak (koku, ışık vb.)', type:'phrasal', syn:['emit','release']},
+  {w:'immensely', t:'ölçüsüzce, son derece', type:'kelime', syn:['greatly','enormously']},
+  {w:'implicitly', t:'örtük olarak', type:'kelime', syn:['indirectly','tacitly']},
+  {w:'impressive', t:'etkileyici', type:'kelime', syn:['remarkable','striking']},
+  {w:'inclusion', t:'dahil etme, kapsayıcılık', type:'kelime', syn:['incorporation']},
+  {w:'independent', t:'bağımsız', type:'kelime', syn:['self-sufficient','autonomous']},
+  {w:'inscribe', t:'yazmak, kazımak', type:'kelime', syn:['engrave','write']},
+  {w:'issue', t:'mesele, konu', type:'kelime', syn:['matter','problem']},
+  {w:'major', t:'büyük, önemli', type:'kelime', syn:['significant','main']},
+  {w:'make up', t:'oluşturmak, telafi etmek', type:'phrasal', syn:['constitute','compensate']},
+  {w:'moderate', t:'ölçülü, orta düzeyde', type:'kelime', syn:['reasonable','average']},
+  {w:'modify', t:'değiştirmek', type:'kelime', syn:['alter','change']},
+  {w:'perception', t:'algı', type:'kelime', syn:['view','understanding']},
+  {w:'persuade', t:'ikna etmek', type:'kelime', syn:['convince','induce']},
+  {w:'primarily', t:'öncelikle, esas olarak', type:'kelime', syn:['mainly','chiefly']},
+  {w:'profound', t:'derin, köklü', type:'kelime', syn:['deep','intense']},
+  {w:'proximity', t:'yakınlık', type:'kelime', syn:['nearness','closeness']},
+  {w:'remarkably', t:'dikkat çekici biçimde', type:'kelime', syn:['notably','strikingly']},
+  {w:'replicate', t:'kopyalamak, tekrarlamak', type:'kelime', syn:['reproduce','copy']},
+  {w:'retrieve', t:'geri almak, kurtarmak', type:'kelime', syn:['recover','get back']},
+  {w:'sarcastic', t:'alaycı', type:'kelime', syn:['mocking','ironic']},
+  {w:'seemingly', t:'görünüşe göre', type:'kelime', syn:['apparently']},
+  {w:'sensitive', t:'hassas', type:'kelime', syn:['delicate','touchy']},
+  {w:'stardom', t:'yıldızlık, ünlülük', type:'kelime', syn:['fame','celebrity']},
+  {w:'subtle', t:'ince, belli belirsiz', type:'kelime', syn:['delicate','understated']},
+  {w:'take down', t:'yazıya geçirmek, indirmek', type:'phrasal', syn:['note down','remove']},
+  {w:'take in', t:'içine almak, kavramak', type:'phrasal', syn:['absorb','understand']},
+  {w:'uniquely', t:'eşsiz bir biçimde', type:'kelime', syn:['distinctively']},
+  {w:'visualise', t:'gözünde canlandırmak', type:'kelime', syn:['imagine','picture']},
+  {w:'vividly', t:'canlı bir şekilde', type:'kelime', syn:['clearly','graphically']},
+  {w:'adopt', t:'benimsemek', type:'kelime', syn:['embrace','take on']},
+  {w:'compatible', t:'uyumlu', type:'kelime', syn:['suited','harmonious']},
+  {w:'fierce', t:'sert, şiddetli', type:'kelime', syn:['intense','aggressive']},
+  {w:'approach', t:'yaklaşım', type:'kelime', syn:['method','way']},
+  {w:'compulsory', t:'zorunlu', type:'kelime', syn:['mandatory','obligatory']},
+  {w:'fit into', t:'uymak, sığmak', type:'phrasal', syn:['belong','integrate']},
+  {w:'assumption', t:'varsayım', type:'kelime', syn:['presumption','belief']},
+  {w:'condemn', t:'kınamak', type:'kelime', syn:['denounce','criticise']},
+  {w:'attachment', t:'bağlılık, ek', type:'kelime', syn:['bond','fondness']},
+  {w:'conformity', t:'uyum, itaat', type:'kelime', syn:['compliance','obedience']},
+  {w:'attitude', t:'tutum', type:'kelime', syn:['outlook','stance']},
+  {w:'confusing', t:'kafa karıştırıcı', type:'kelime', syn:['puzzling','bewildering']},
+  {w:'burden', t:'yük', type:'kelime', syn:['load','weight']},
+  {w:'decisively', t:'kararlı bir şekilde', type:'kelime', syn:['firmly','conclusively']},
+  {w:'collaborative', t:'iş birlikçi', type:'kelime', syn:['cooperative','joint']},
+  {w:'equate', t:'eşdeğer saymak', type:'kelime', syn:['equalise','identify']},
+  {w:'commitment', t:'bağlılık, adanmışlık', type:'kelime', syn:['dedication','pledge']},
+  {w:'evenly', t:'eşit şekilde', type:'kelime', syn:['equally','uniformly']},
+  {w:'foster', t:'geliştirmek, teşvik etmek', type:'kelime', syn:['encourage','nurture']},
+  {w:'frankly', t:'açıkçası', type:'kelime', syn:['honestly','candidly']},
+  {w:'fundamentally', t:'temelde', type:'kelime', syn:['basically','essentially']},
+  {w:'get along', t:'iyi geçinmek', type:'phrasal', syn:['get on well']},
+  {w:'get through', t:'başarmak, atlatmak', type:'phrasal', syn:['survive','cope with']},
+  {w:'hand down', t:'nesilden nesile aktarmak', type:'phrasal', syn:['pass down','bequeath']},
+  {w:'impair', t:'zayıflatmak, bozmak', type:'kelime', syn:['damage','weaken']},
+  {w:'integrate', t:'bütünleştirmek, entegre etmek', type:'kelime', syn:['combine','merge']},
+  {w:'nominate', t:'aday göstermek', type:'kelime', syn:['propose','name']},
+  {w:'rejection', t:'ret, reddedilme', type:'kelime', syn:['refusal','denial']},
+  {w:'isolation', t:'yalıtılmışlık, izolasyon', type:'kelime', syn:['seclusion','separation']},
+  {w:'obsessed', t:'saplantılı, takıntılı', type:'kelime', syn:['preoccupied','fixated']},
+  {w:'rely on', t:'güvenmek, dayanmak', type:'phrasal', syn:['depend on','count on']},
+  {w:'let down', t:'hayal kırıklığına uğratmak', type:'phrasal', syn:['disappoint','fail']},
+  {w:'lightly', t:'hafifçe', type:'kelime', syn:['gently','slightly']},
+  {w:'likely', t:'muhtemel', type:'kelime', syn:['probable']},
+  {w:'live on', t:'yaşamaya devam etmek, ile geçinmek', type:'phrasal', syn:['survive on','continue']},
+  {w:'loosely', t:'gevşek bir şekilde', type:'kelime', syn:['casually','approximately']},
+  {w:'mindful', t:'bilinçli, dikkatli', type:'kelime', syn:['aware','conscious']},
+  {w:'mutually', t:'karşılıklı olarak', type:'kelime', syn:['reciprocally']},
+  {w:'overlook', t:'gözden kaçırmak, göz ardı etmek', type:'kelime', syn:['ignore','miss']},
+  {w:'prohibit', t:'yasaklamak', type:'kelime', syn:['forbid','ban']},
+  {w:'put aside', t:'bir kenara koymak', type:'phrasal', syn:['set aside','save']},
+  {w:'put off', t:'ertelemek', type:'phrasal', syn:['postpone','delay']},
+  {w:'readily', t:'kolaylıkla, seve seve', type:'kelime', syn:['willingly','easily']},
+  {w:'reasonable', t:'makul', type:'kelime', syn:['sensible','fair']},
+  {w:'resident', t:'sakin, oturan kişi', type:'kelime', syn:['inhabitant','occupant']},
+  {w:'substantially', t:'önemli ölçüde', type:'kelime', syn:['considerably','largely']},
+  {w:'supportive', t:'destekleyici', type:'kelime', syn:['encouraging','helpful']},
+  {w:'tactfully', t:'nezaketle, incelikle', type:'kelime', syn:['diplomatically']},
+  {w:'undergo', t:'geçirmek, maruz kalmak', type:'kelime', syn:['experience','go through']},
+  {w:'wear out', t:'yıpranmak, eskitmek', type:'phrasal', syn:['exhaust','wear down']},
+  {w:'accurately', t:'doğru bir şekilde', type:'kelime', syn:['precisely','correctly']},
+  {w:'advance', t:'ilerleme', type:'kelime', syn:['progress','development']},
+  {w:'allegedly', t:'iddia edildiğine göre', type:'kelime', syn:['reportedly','supposedly']},
+  {w:'artificial', t:'yapay', type:'kelime', syn:['synthetic','man-made']},
+  {w:'complicating', t:'karmaşıklaştıran', type:'kelime', syn:['confusing','entangling']},
+  {w:'consistent', t:'tutarlı', type:'kelime', syn:['steady','uniform']},
+  {w:'deal with', t:'ile ilgilenmek, başa çıkmak', type:'phrasal', syn:['handle','address']},
+  {w:'defective', t:'kusurlu', type:'kelime', syn:['faulty','flawed']},
+  {w:'deficit', t:'açık, eksiklik', type:'kelime', syn:['shortfall','shortage']},
+  {w:'devise', t:'tasarlamak, geliştirmek', type:'kelime', syn:['design','create']},
+  {w:'divisively', t:'bölücü bir şekilde', type:'kelime', syn:['controversially']},
+  {w:'duplicate', t:'kopyalamak, ikizini yapmak', type:'kelime', syn:['copy','replicate']},
+  {w:'estimate', t:'tahmin etmek', type:'kelime', syn:['assess','calculate']},
+  {w:'examine', t:'incelemek', type:'kelime', syn:['inspect','study']},
+  {w:'extensively', t:'geniş çapta', type:'kelime', syn:['widely','thoroughly']},
+  {w:'fall through', t:'suya düşmek, gerçekleşmemek', type:'phrasal', syn:['fail','collapse']},
+  {w:'feasible', t:'uygulanabilir', type:'kelime', syn:['achievable','viable']},
+  {w:'find out', t:'öğrenmek, keşfetmek', type:'phrasal', syn:['discover','learn']},
+  {w:'gratefully', t:'minnettarlıkla', type:'kelime', syn:['thankfully']},
+  {w:'indicate', t:'belirtmek, göstermek', type:'kelime', syn:['show','signal']},
+  {w:'insert', t:'eklemek, yerleştirmek', type:'kelime', syn:['put in','add']},
+  {w:'insight', t:'kavrayış, iç görü', type:'kelime', syn:['understanding','perception']},
+  {w:'insist', t:'ısrar etmek', type:'kelime', syn:['demand','maintain']},
+  {w:'invention', t:'icat', type:'kelime', syn:['creation','innovation']},
+  {w:'maintain', t:'sürdürmek, korumak', type:'kelime', syn:['sustain','preserve']},
+  {w:'measurable', t:'ölçülebilir', type:'kelime', syn:['quantifiable']},
+  {w:'necessarily', t:'zorunlu olarak', type:'kelime', syn:['inevitably']},
+  {w:'negligible', t:'ihmal edilebilir, önemsiz', type:'kelime', syn:['insignificant','trivial']},
+  {w:'outbreak', t:'salgın, patlak verme', type:'kelime', syn:['eruption','epidemic']},
+  {w:'potentially', t:'potansiyel olarak', type:'kelime', syn:['possibly']},
+  {w:'progress', t:'ilerlemek', type:'kelime', syn:['advance','improve']},
+  {w:'shift', t:'değişim, kayma', type:'kelime', syn:['change','move']},
+  {w:'provable', t:'kanıtlanabilir', type:'kelime', syn:['demonstrable','verifiable']},
+  {w:'speculation', t:'spekülasyon, tahmin', type:'kelime', syn:['conjecture','guesswork']},
+  {w:'put through', t:'bağlamak, gerçekleştirmek', type:'phrasal', syn:['connect','carry out']},
+  {w:'sufficient', t:'yeterli', type:'kelime', syn:['enough','adequate']},
+  {w:'quantity', t:'miktar', type:'kelime', syn:['amount']},
+  {w:'relatively', t:'nispeten', type:'kelime', syn:['comparatively']},
+  {w:'reveal', t:'ortaya çıkarmak, ifşa etmek', type:'kelime', syn:['disclose','uncover']},
+  {w:'precise', t:'kesin, tam', type:'kelime', syn:['exact','accurate']},
+  {w:'run into', t:'rastlamak, karşılaşmak', type:'phrasal', syn:['meet by chance','encounter']},
+  {w:'process', t:'süreç', type:'kelime', syn:['procedure','method']},
+  {w:'set up', t:'kurmak', type:'phrasal', syn:['establish','arrange']},
+  {w:'suspicion', t:'şüphe', type:'kelime', syn:['doubt','mistrust']},
+  {w:'take on', t:'üstlenmek', type:'phrasal', syn:['undertake','hire']},
+  {w:'turn into', t:'dönüşmek', type:'phrasal', syn:['become','transform into']},
+  {w:'variably', t:'değişken bir şekilde', type:'kelime', syn:['inconsistently']},
+  {w:'virtually', t:'neredeyse, sanal olarak', type:'kelime', syn:['almost','practically']},
+];
+
+function filterYksSozluk(type){
+  ['all','kelime','phrasal'].forEach(t=>{
+    const b=document.getElementById('yks-filter-'+t);
+    if(!b) return;
+    const active = t===type;
+    b.style.background = active ? 'rgba(200,169,110,0.15)' : 'var(--surface2)';
+    b.style.borderColor = active ? 'var(--accent)' : 'var(--border)';
+    b.style.color = active ? 'var(--accent)' : 'var(--text)';
+  });
+  renderYksSozluk(type);
+}
+
+function renderYksSozluk(type){
+  const list = document.getElementById('yks-sozluk-list');
+  if(!list) return;
+  const items = (type && type!=='all') ? YKS_WORD_BANK.filter(x=>x.type===type) : YKS_WORD_BANK;
+  list.innerHTML = items.map((item,i)=>{
+    const safeW = item.w.replace(/'/g,"\\'");
+    const safeT = item.t.replace(/'/g,"\\'");
+    const synHtml = (item.syn && item.syn.length)
+      ? `<div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:8px">
+          <span style="font-size:0.68rem;color:var(--muted);align-self:center">Eş anlamlı:</span>
+          ${item.syn.map(s=>`<button onclick="openYksExampleChooser('${s.replace(/'/g,"\\'")}','${safeT}',${i})" style="font-size:0.72rem;padding:3px 10px;border-radius:14px;background:var(--surface);border:1px solid var(--border);color:var(--accent2);cursor:pointer;font-family:'DM Sans',sans-serif">${s}</button>`).join('')}
+        </div>`
+      : '';
+    return `<div style="border:1px solid var(--border);border-radius:10px;padding:14px;background:var(--surface2)">
+      <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
+        <div>
+          <span style="font-family:'Playfair Display',serif;font-weight:700;font-size:1rem">${item.w}</span>
+          <span style="font-size:0.68rem;color:var(--muted);margin-left:8px">${item.type==='phrasal'?'phrasal verb':'kelime'}</span>
+          <div style="font-size:0.82rem;color:var(--muted);margin-top:2px">${item.t}</div>
+        </div>
+        <div style="display:flex;gap:6px">
+          <button class="btn btn-sm" onclick="speak('${safeW}',null)" style="background:transparent;border:1px solid var(--border);color:var(--muted)">🔊</button>
+          <button class="btn btn-sm" onclick="openYksExampleChooser('${safeW}','${safeT}',${i})" style="background:rgba(126,184,201,0.15);border:1px solid var(--accent2);color:var(--accent2)">🤖 Örnek Cümle Oluştur</button>
+        </div>
+      </div>
+      ${synHtml}
+      <div id="yks-ex-${i}" style="margin-top:8px"></div>
+    </div>`;
+  }).join('');
+  list.dataset.currentType = type||'all';
+}
+
+function openYksExampleChooser(word, meaning, idx){
+  const target = document.getElementById('yks-ex-'+idx);
+  if(!target) return;
+  const safeW = word.replace(/'/g,"\\'");
+  const safeM = meaning.replace(/'/g,"\\'");
+  target.innerHTML = `<div style="display:flex;gap:8px;align-items:center;font-size:0.78rem;color:var(--muted);flex-wrap:wrap">
+    <b style="color:var(--text)">${word}</b> için hangi dilde örnek istersin?
+    <button class="btn btn-sm" onclick="generateYksExample('${safeW}','${safeM}','tr',${idx})" style="background:rgba(200,169,110,0.15);border:1px solid var(--accent);color:var(--accent)">🇹🇷 Türkçe</button>
+    <button class="btn btn-sm" onclick="generateYksExample('${safeW}','${safeM}','en',${idx})" style="background:rgba(126,184,201,0.15);border:1px solid var(--accent2);color:var(--accent2)">🇬🇧 İngilizce</button>
+  </div>`;
+}
+
+async function generateYksExample(word, meaning, lang, idx){
+  const target = document.getElementById('yks-ex-'+idx);
+  if(!target) return;
+  target.innerHTML = '<div style="font-size:0.76rem;color:var(--muted);font-style:italic">⏳ "'+word+'" için örnek cümle üretiliyor...</div>';
+  try{
+    const d = await fetchSentencesForMeaning(word, meaning, lang);
+    const sentences = [d.e1, d.e2, d.e3].filter(Boolean);
+    if(!sentences.length){ target.innerHTML = '<div style="font-size:0.76rem;color:var(--muted)">Cümle üretilemedi, tekrar dene.</div>'; return; }
+    target.innerHTML = `<div style="font-size:0.7rem;color:var(--muted);margin-bottom:4px">"${word}" için:</div>` +
+      sentences.map(s=>`<div style="font-size:0.8rem;color:var(--text);padding:6px 10px;background:var(--surface);border-radius:8px;margin-top:4px;border-left:2px solid var(--accent)">${s}</div>`).join('');
+  } catch(e){
+    target.innerHTML = '<div style="font-size:0.76rem;color:var(--danger)">Cümle üretilemedi.</div>';
+  }
+}
+
+// ---- Günün Kelimeleri: eşleştirme oyunu ----
+let gkState = null; // {pairs:[{w,t,matched}], selectedEn, selectedTr}
+
+function renderGununKelimeleri(reshuffle){
+  if(!gkState || reshuffle){
+    const shuffled = [...YKS_WORD_BANK].sort(()=>Math.random()-0.5).slice(0,8);
+    gkState = {
+      pairs: shuffled.map((x,i)=>({id:i, w:x.w, t:x.t, matched:false})),
+      enOrder: shuffled.map((x,i)=>i).sort(()=>Math.random()-0.5),
+      trOrder: shuffled.map((x,i)=>i).sort(()=>Math.random()-0.5),
+      selectedEn: null, selectedTr: null,
+    };
+  }
+  const colEn = document.getElementById('gk-col-en');
+  const colTr = document.getElementById('gk-col-tr');
+  const progress = document.getElementById('gk-progress');
+  const completeMsg = document.getElementById('gk-complete-msg');
+  if(!colEn || !colTr) return;
+
+  const matchedCount = gkState.pairs.filter(p=>p.matched).length;
+  if(progress) progress.textContent = matchedCount+' / '+gkState.pairs.length+' eşleşti';
+
+  colEn.innerHTML = gkState.enOrder.map(id=>{
+    const p = gkState.pairs[id];
+    const isSelected = gkState.selectedEn===id;
+    const bg = p.matched ? 'rgba(110,200,155,0.15)' : isSelected ? 'rgba(200,169,110,0.25)' : 'var(--surface2)';
+    const border = p.matched ? 'var(--success)' : isSelected ? 'var(--accent)' : 'var(--border)';
+    return `<button ${p.matched?'disabled':''} onclick="gkSelectEn(${id})" style="padding:10px 14px;border-radius:9px;border:1px solid ${border};background:${bg};color:var(--text);cursor:${p.matched?'default':'pointer'};text-align:left;font-family:'DM Sans',sans-serif;font-size:0.85rem">${p.w}${p.matched?' ✓':''}</button>`;
+  }).join('');
+
+  colTr.innerHTML = gkState.trOrder.map(id=>{
+    const p = gkState.pairs[id];
+    const isSelected = gkState.selectedTr===id;
+    const bg = p.matched ? 'rgba(110,200,155,0.15)' : isSelected ? 'rgba(126,184,201,0.25)' : 'var(--surface2)';
+    const border = p.matched ? 'var(--success)' : isSelected ? 'var(--accent2)' : 'var(--border)';
+    return `<button ${p.matched?'disabled':''} onclick="gkSelectTr(${id})" style="padding:10px 14px;border-radius:9px;border:1px solid ${border};background:${bg};color:var(--text);cursor:${p.matched?'default':'pointer'};text-align:left;font-family:'DM Sans',sans-serif;font-size:0.85rem">${p.t}${p.matched?' ✓':''}</button>`;
+  }).join('');
+
+  if(matchedCount === gkState.pairs.length){
+    if(completeMsg){ completeMsg.style.display='block'; completeMsg.innerHTML='🎉 Tebrikler, hepsini eşleştirdin!'; }
+  } else if(completeMsg){ completeMsg.style.display='none'; }
+}
+
+function gkSelectEn(id){
+  if(!gkState || gkState.pairs[id].matched) return;
+  gkState.selectedEn = id;
+  gkCheckMatch();
+  renderGununKelimeleri(false);
+}
+function gkSelectTr(id){
+  if(!gkState || gkState.pairs[id].matched) return;
+  gkState.selectedTr = id;
+  gkCheckMatch();
+  renderGununKelimeleri(false);
+}
+function gkCheckMatch(){
+  if(gkState.selectedEn!=null && gkState.selectedTr!=null){
+    if(gkState.selectedEn === gkState.selectedTr){
+      gkState.pairs[gkState.selectedEn].matched = true;
+    }
+    gkState.selectedEn = null;
+    gkState.selectedTr = null;
+  }
+}
+
+
 // ═══════════════════════════════════════════════════════════════
 const FC_PROMO_IMG = 'data:image/jpeg;base64,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';
 const FC_CONTENT_ID = 'ydt-tyt-1ay-kamp';
