@@ -779,6 +779,30 @@ document.getElementById('pwa-manifest').href=URL.createObjectURL(mblob);
       </div>
       <div id="range-session-area"></div>
     </div>
+    <!-- ===== KELIME GRUBU İLE TEKRAR ===== -->
+    <div class="card" style="margin-top:14px">
+      <div class="section-title"><span class="dot" style="background:var(--accent3)"></span>📂 Kelime Grubu ile Tekrar</div>
+      <p style="font-size:0.76rem;color:var(--muted);margin-bottom:12px">Kişisel Banka'dan oluşturduğun kelime gruplarından birini seçip o gruptaki kelimeleri istediğin soru tipiyle pratik yap.</p>
+      <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;margin-bottom:12px">
+        <div>
+          <label style="font-size:0.7rem;color:var(--muted);display:block;margin-bottom:3px">Kelime Grubu</label>
+          <select id="srs-vocabgroup-select" style="padding:7px 10px;border-radius:8px;background:var(--surface2);border:1px solid var(--border);color:var(--text);font-size:0.8rem;min-width:160px">
+            <option value="">— Grup seç —</option>
+          </select>
+        </div>
+        <div>
+          <label style="font-size:0.7rem;color:var(--muted);display:block;margin-bottom:3px">Soru Tipi</label>
+          <select id="srs-group-quiztype-select" style="padding:7px 10px;border-radius:8px;background:var(--surface2);border:1px solid var(--border);color:var(--text);font-size:0.8rem">
+            <option value="flashcard">🔄 Çevirme Kart</option>
+            <option value="multichoice">☑️ Çoktan Seçmeli</option>
+            <option value="typing">⌨️ Yazarak Cevapla</option>
+          </select>
+        </div>
+        <button class="btn" onclick="startGroupReview()" style="background:rgba(155,126,200,0.15);border:1px solid var(--accent3);color:var(--accent3);padding:8px 18px">▶ Başlat</button>
+      </div>
+      <div id="srs-group-session-area"></div>
+    </div>
+
     <div class="card" style="margin-top:14px">
       <div class="section-title"><span class="dot" style="background:var(--accent3)"></span>Tüm SRS Kartları</div>
       <div id="srs-all-cards" style="max-height:320px;overflow-y:auto"></div>
@@ -846,10 +870,15 @@ document.getElementById('pwa-manifest').href=URL.createObjectURL(mblob);
       </div>
       <div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap;align-items:center">
         <label style="font-size:0.7rem;color:var(--muted)">Kaynak:</label>
-        <select id="quiz-source" onchange="startQuizMode(currentQuizMode)" style="font-size:0.78rem;padding:4px 8px;border-radius:6px">
+        <select id="quiz-source" onchange="onQuizSourceChange()" style="font-size:0.78rem;padding:4px 8px;border-radius:6px">
           <option value="vocab">Kişisel Banka</option>
+          <option value="vocabgroup">📂 Kelime Grubu</option>
           <option value="wordlist">Kelime Listeleri</option>
           <option value="srs">SRS Kartları</option>
+        </select>
+        <!-- Kelime Grubu seçilince görünür -->
+        <select id="quiz-vocabgroup-select" onchange="startQuizMode(currentQuizMode)" style="font-size:0.78rem;padding:4px 8px;border-radius:6px;display:none;max-width:180px">
+          <option value="">— Grup seç —</option>
         </select>
         <select id="quiz-cat-select" style="font-size:0.78rem;padding:4px 8px;border-radius:6px;display:none">
           <option value="medical">🩺 Tıp</option>
@@ -3640,6 +3669,7 @@ function saveNewVocabGroup(){
   saveState();
   document.getElementById('vocab-group-modal')?.remove();
   renderVocab();
+  refreshQuizGroupSelects(); // quiz + srs dropdown'larını güncelle
   showResetToast('📂 "'+name+'" grubu oluşturuldu!');
 }
 
@@ -3651,6 +3681,7 @@ function deleteVocabGroup(id){
       state.vocabGroupAssign[k]=(state.vocabGroupAssign[k]||[]).filter(x=>x!==id);
     });
     saveState(); renderVocab();
+    refreshQuizGroupSelects(); // quiz + srs dropdown'larını güncelle
   });
 }
 
@@ -4038,6 +4069,7 @@ async function loadUserData(userId) {
   renderSRS();
   updateSRSDot();
   renderCalendar();
+  refreshQuizGroupSelects(); // grup dropdown'larını uygulama açılışında yükle
   window.speechSynthesis && window.speechSynthesis.getVoices();
 }
 
@@ -4473,8 +4505,8 @@ function switchTab(name, btn) {
   if (lbl) lbl.textContent = TAB_LABELS2[name] || name;
   if (name === 'dashboard') updateDashboard();
   if (name === 'wordlists') { renderSessionBtns(); renderWordTable(); renderAnalysis(); }
-  if (name === 'srs') renderSRS();
-  if (name === 'quiz') startQuizMode(currentQuizMode || 'flashcard');
+  if (name === 'srs') { renderSRS(); refreshQuizGroupSelects(); }
+  if (name === 'quiz') { refreshQuizGroupSelects(); startQuizMode(currentQuizMode || 'flashcard'); }
   if (name === 'goals') renderGoalsPanel();
   if (name === 'study') renderStudyLog();
   if (name === 'vocab') renderVocab();
@@ -4934,9 +4966,52 @@ setInterval(() => {
 let currentQuizMode = 'flashcard';
 let quizWordPool = [];
 
+// ─── Kelime grubu dropdown'larını her yerde güncelle ─────────────────────────
+function refreshQuizGroupSelects() {
+  const groups = state.vocabGroups || [];
+  // Quiz paneli dropdown'u
+  const qSel = document.getElementById('quiz-vocabgroup-select');
+  if (qSel) {
+    const prev = qSel.value;
+    qSel.innerHTML = '<option value="">— Grup seç —</option>' +
+      groups.map(g => `<option value="${g.id}"${String(g.id)===prev?'selected':''}>${g.name}</option>`).join('');
+  }
+  // SRS paneli dropdown'u
+  const sSel = document.getElementById('srs-vocabgroup-select');
+  if (sSel) {
+    const prev2 = sSel.value;
+    sSel.innerHTML = '<option value="">— Grup seç —</option>' +
+      groups.map(g => `<option value="${g.id}"${String(g.id)===prev2?'selected':''}>${g.name}</option>`).join('');
+  }
+}
+
+// Quiz kaynağı değişince dropdown görünürlüklerini ayarla
+function onQuizSourceChange() {
+  const src = document.getElementById('quiz-source')?.value || 'vocab';
+  const grpSel = document.getElementById('quiz-vocabgroup-select');
+  const catSel = document.getElementById('quiz-cat-select');
+  if (grpSel) grpSel.style.display = src === 'vocabgroup' ? 'inline-block' : 'none';
+  if (catSel) catSel.style.display = src === 'wordlist' ? 'inline-block' : 'none';
+  startQuizMode(currentQuizMode);
+}
+
+// Gruptaki kelimeleri döndür (vocab + vocabGroupAssign'dan)
+function getVocabGroupWords(groupId) {
+  const gid = parseInt(groupId) || groupId;
+  const assign = state.vocabGroupAssign || {};
+  const vocab = state.vocab || [];
+  // groupId'e atanmış vocab id'lerini bul
+  const assignedVocabIds = Object.entries(assign)
+    .filter(([, gids]) => gids.includes(gid) || gids.map(Number).includes(Number(gid)))
+    .map(([vid]) => parseInt(vid) || vid);
+  return vocab
+    .filter(v => assignedVocabIds.includes(v.id) || assignedVocabIds.map(Number).includes(Number(v.id)))
+    .map(v => ({ w: v.w, m: v.m, e: v.e || '' }));
+}
+
 function startQuizMode(mode) {
   currentQuizMode = mode || 'flashcard';
-  // Update button styles
+  // Buton stillerini güncelle
   ['flashcard','multichoice','fillblank','matching'].forEach(m => {
     const btn = document.getElementById('qmode-' + m);
     if (!btn) return;
@@ -4944,37 +5019,178 @@ function startQuizMode(mode) {
     btn.style.background = m === currentQuizMode ? 'rgba(200,169,110,0.12)' : 'transparent';
     btn.style.color = m === currentQuizMode ? 'var(--accent)' : 'var(--muted)';
   });
-  // Hide all mode panels
+  // Mod panellerini gizle
   ['flashcard','multichoice','fillblank','matching'].forEach(m => {
     const p = document.getElementById('quiz-mode-' + m);
     if (p) p.style.display = 'none';
   });
-  // Build word pool
+  // Kelime havuzunu oluştur
   const src = document.getElementById('quiz-source')?.value || 'vocab';
   const catSel = document.getElementById('quiz-cat-select');
-  if (src === 'wordlist') {
+  const grpSel = document.getElementById('quiz-vocabgroup-select');
+
+  if (src === 'vocabgroup') {
+    if (catSel) catSel.style.display = 'none';
+    if (grpSel) grpSel.style.display = 'inline-block';
+    const gid = grpSel?.value;
+    if (!gid) {
+      quizWordPool = [];
+      const panel2 = document.getElementById('quiz-mode-' + currentQuizMode);
+      if (panel2) panel2.style.display = 'block';
+      // Gruba göre boş uyarı
+      const areas = ['quiz-card','mc-question','fb-sentence','matching-area'];
+      areas.forEach(id => { const el = document.getElementById(id); if(el) el.innerHTML = '<div style="text-align:center;color:var(--muted);font-size:0.85rem;padding:20px">Lütfen bir kelime grubu seç.</div>'; });
+      return;
+    }
+    quizWordPool = getVocabGroupWords(gid);
+    if (!quizWordPool.length) {
+      const panel2 = document.getElementById('quiz-mode-' + currentQuizMode);
+      if (panel2) panel2.style.display = 'block';
+      const mc = document.getElementById('mc-question');
+      if(mc) mc.innerHTML = '<div style="color:var(--muted);font-size:0.85rem">Bu grupta henüz kelime yok.</div>';
+      return;
+    }
+  } else if (src === 'wordlist') {
     if (catSel) catSel.style.display = 'inline-block';
+    if (grpSel) grpSel.style.display = 'none';
     const cat = catSel?.value || 'medical';
     quizWordPool = (WORD_DB[cat] || []).map(w => ({ w: w.w, m: w.t, e: w.e1 || w.e || '' }));
   } else if (src === 'srs') {
     if (catSel) catSel.style.display = 'none';
+    if (grpSel) grpSel.style.display = 'none';
     quizWordPool = Object.entries(state.srsCards || {}).slice(0, 50).map(([key]) => {
       const [cat, idx] = key.split('_');
       const word = WORD_DB[cat] && WORD_DB[cat][parseInt(idx)];
       return word ? { w: word.w, m: word.t, e: word.e1 || word.e || '' } : null;
     }).filter(Boolean);
   } else {
+    // vocab (Kişisel Banka — tümü)
     if (catSel) catSel.style.display = 'none';
+    if (grpSel) grpSel.style.display = 'none';
     quizWordPool = (state.vocab || []).map(v => ({ w: v.w, m: v.m, e: v.e || '' }));
   }
   quizWordPool = quizWordPool.sort(() => Math.random() - 0.5);
-  // Show selected mode
+  // Modu göster
   const panel = document.getElementById('quiz-mode-' + currentQuizMode);
   if (panel) panel.style.display = 'block';
   if (currentQuizMode === 'flashcard') { state.quizDeck = quizWordPool.map(w => ({w:w.w,m:w.m,e:w.e})); state.quizIndex=0; state.quizFlipped=false; renderQuiz(); }
   if (currentQuizMode === 'multichoice') initMultiChoice();
   if (currentQuizMode === 'fillblank') initFillBlank();
   if (currentQuizMode === 'matching') initMatchingQuiz();
+}
+
+// ─── SRS Paneli — Kelime Grubu ile Tekrar ────────────────────────────────────
+let groupReviewSession = null;
+
+function startGroupReview() {
+  const gid = document.getElementById('srs-vocabgroup-select')?.value;
+  const quizType = document.getElementById('srs-group-quiztype-select')?.value || 'flashcard';
+  const area = document.getElementById('srs-group-session-area');
+  if (!area) return;
+  if (!gid) { area.innerHTML = '<div style="color:var(--danger);font-size:0.82rem;padding:8px">Lütfen bir grup seç.</div>'; return; }
+  const pool = getVocabGroupWords(gid);
+  if (!pool.length) { area.innerHTML = '<div style="color:var(--muted);font-size:0.82rem;padding:8px">Bu grupta henüz kelime yok. Kişisel Banka\'dan kelimeleri gruba ekle.</div>'; return; }
+  const grpName = (state.vocabGroups||[]).find(g=>String(g.id)===String(gid))?.name || 'Grup';
+  groupReviewSession = { pool: pool.sort(()=>Math.random()-0.5), index: 0, correct: 0, quizType, grpName };
+  renderGroupReviewCard();
+}
+
+function renderGroupReviewCard() {
+  const area = document.getElementById('srs-group-session-area');
+  if (!area || !groupReviewSession) return;
+  const { pool, index, correct, quizType, grpName } = groupReviewSession;
+  if (index >= pool.length) {
+    area.innerHTML = `<div class="card" style="text-align:center;padding:28px">
+      <div style="font-size:2.2rem;margin-bottom:10px">🎉</div>
+      <div style="font-family:'Playfair Display',serif;font-size:1.2rem;font-weight:700;color:var(--success);margin-bottom:8px">"${grpName}" tamamlandı!</div>
+      <div style="font-size:0.82rem;color:var(--muted);margin-bottom:14px">${correct} / ${pool.length} doğru</div>
+      <button class="btn btn-primary" onclick="startGroupReview()">🔀 Tekrar Başlat</button>
+    </div>`;
+    return;
+  }
+  const item = pool[index];
+  let cardHtml = '';
+  if (quizType === 'multichoice') {
+    const allVocab = state.vocab || [];
+    const distractors = allVocab.filter(v=>v.m!==item.m).sort(()=>Math.random()-0.5).slice(0,3);
+    if (distractors.length < 3) {
+      const extra = Object.values(WORD_DB).flat().filter(w=>w.t!==item.m).sort(()=>Math.random()-0.5).slice(0,3-distractors.length).map(w=>({m:w.t}));
+      distractors.push(...extra);
+    }
+    const opts = [...distractors.map(d=>d.m), item.m].sort(()=>Math.random()-0.5);
+    const cEsc = item.m.replace(/'/g,'&apos;');
+    cardHtml = `<div style="font-family:'Playfair Display',serif;font-size:1.5rem;font-weight:700;color:var(--accent);text-align:center;margin-bottom:16px">${item.w}</div>
+      <div style="font-size:0.72rem;color:var(--muted);text-align:center;margin-bottom:12px">Doğru Türkçe anlamı seç:</div>
+      <div style="display:flex;flex-direction:column;gap:8px" id="grp-mc-opts">
+        ${opts.map(o=>`<button onclick="grpMCAnswer(this,'${o.replace(/'/g,'&apos;')}','${cEsc}')" style="padding:10px 14px;border-radius:10px;border:1px solid var(--border);background:var(--surface2);color:var(--text);cursor:pointer;text-align:left;font-size:0.85rem">${o}</button>`).join('')}
+      </div>`;
+  } else if (quizType === 'typing') {
+    cardHtml = `<div style="font-family:'Playfair Display',serif;font-size:1.5rem;font-weight:700;color:var(--accent);text-align:center;margin-bottom:8px">${item.w}</div>
+      <div style="font-size:0.75rem;color:var(--muted);text-align:center;margin-bottom:14px">Türkçe anlamını yaz:</div>
+      <div style="display:flex;gap:8px;justify-content:center;margin-bottom:10px">
+        <input type="text" id="grp-type-input" placeholder="Türkçe anlam..." style="width:200px;text-align:center;font-size:0.95rem;padding:8px 12px;border-radius:8px;background:var(--surface2);border:1px solid var(--border);color:var(--text)" onkeydown="if(event.key==='Enter')grpTypeAnswer()">
+        <button onclick="grpTypeAnswer()" style="padding:8px 14px;background:var(--accent);color:#0d0d0f;border:none;border-radius:8px;cursor:pointer;font-size:0.82rem">Kontrol</button>
+      </div>
+      <div id="grp-type-feedback" style="text-align:center;min-height:22px;font-size:0.82rem"></div>`;
+  } else {
+    // flashcard
+    cardHtml = `<div class="srs-card" onclick="this.querySelector('.grp-back').style.display=this.querySelector('.grp-back').style.display==='none'?'block':'none'" style="cursor:pointer">
+      <div class="srs-word">${item.w}</div>
+      <div style="font-size:0.75rem;color:var(--muted);margin-top:8px">Türkçesini hatırlıyor musun? Tıkla →</div>
+      <div class="grp-back" style="display:none;margin-top:14px;padding-top:14px;border-top:1px solid var(--border)">
+        <div style="font-family:'Playfair Display',serif;font-size:1.2rem;font-weight:700;color:var(--text)">${item.m}</div>
+        ${item.e?`<div style="font-size:0.78rem;color:var(--muted);font-style:italic;margin-top:6px">"${item.e}"</div>`:''}
+      </div>
+    </div>
+    <div style="display:flex;gap:8px;justify-content:center;margin-top:12px">
+      <button onclick="grpFlashNext(false)" style="padding:8px 18px;border-radius:8px;border:1px solid var(--danger);background:transparent;color:var(--danger);cursor:pointer;font-size:0.8rem">✗ Bilmedim</button>
+      <button onclick="grpFlashNext(true)" style="padding:8px 18px;border-radius:8px;border:1px solid var(--success);background:transparent;color:var(--success);cursor:pointer;font-size:0.8rem">✓ Bildim</button>
+    </div>`;
+  }
+  area.innerHTML = `<div class="card">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;flex-wrap:wrap;gap:6px">
+      <div style="font-size:0.72rem;color:var(--accent3);font-family:'DM Mono',monospace">📂 ${grpName}</div>
+      <div style="font-size:0.72rem;color:var(--muted);font-family:'DM Mono',monospace">${index+1} / ${pool.length} · ✓ ${correct}</div>
+    </div>
+    ${cardHtml}
+  </div>`;
+  // typing: input'a odaklan
+  if (quizType === 'typing') setTimeout(()=>document.getElementById('grp-type-input')?.focus(),80);
+}
+
+function grpMCAnswer(btn, chosen, correct) {
+  document.querySelectorAll('#grp-mc-opts button').forEach(b => {
+    b.disabled = true;
+    if (b.textContent.trim() === correct) { b.style.background='rgba(110,200,155,0.2)'; b.style.borderColor='var(--success)'; }
+    else if (b===btn && chosen!==correct) { b.style.background='rgba(200,110,126,0.2)'; b.style.borderColor='var(--danger)'; }
+  });
+  if (chosen === correct) groupReviewSession.correct++;
+  groupReviewSession.index++;
+  setTimeout(renderGroupReviewCard, 1400);
+}
+
+function grpTypeAnswer() {
+  const inp = document.getElementById('grp-type-input');
+  if (!inp || !groupReviewSession) return;
+  const item = groupReviewSession.pool[groupReviewSession.index];
+  const ans = inp.value.trim().toLowerCase();
+  const correct = item.m.toLowerCase();
+  const fb = document.getElementById('grp-type-feedback');
+  const isOk = ans === correct || correct.includes(ans) || ans.includes(correct.split(',')[0].trim());
+  if (fb) fb.innerHTML = isOk
+    ? '<span style="color:var(--success)">✓ Doğru!</span>'
+    : `<span style="color:var(--danger)">✗ Yanlış. Doğrusu: <b>${item.m}</b></span>`;
+  if (isOk) groupReviewSession.correct++;
+  inp.disabled = true;
+  groupReviewSession.index++;
+  setTimeout(renderGroupReviewCard, 1500);
+}
+
+function grpFlashNext(knew) {
+  if (!groupReviewSession) return;
+  if (knew) groupReviewSession.correct++;
+  groupReviewSession.index++;
+  renderGroupReviewCard();
 }
 
 // Çoktan seçmeli
